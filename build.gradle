@@ -1,0 +1,66 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.148' apply false
+    id 'com.diffplug.spotless' version '8.10.4' apply false
+    id 'com.vanniktech.maven.publish' version '0.37.0' apply false
+}
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'com.diffplug.spotless'
+
+    group = 'io.github.west3436'
+    version = mod_version
+
+    // The API versions the mod's nested API accepts: from this one up to the next version that may
+    // break it. That is the next minor while the API is 0.x, and the next major from 1.0.
+    def (apiMajor, apiMinor) = api_version.tokenize('.').take(2).collect { it as int }
+    ext.api_range = apiMajor == 0
+            ? "[${api_version},0.${apiMinor + 1}.0)"
+            : "[${api_version},${apiMajor + 1}.0)"
+
+    java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+    repositories {
+        mavenCentral()
+    }
+
+    // spotlessCheck runs as part of check, so build fails on unformatted code.
+    // Run ./gradlew spotlessApply to fix it.
+    spotless {
+        java {
+            target 'src/*/java/**/*.java'
+            palantirJavaFormat('2.103.0')
+            removeUnusedImports()
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    // Every ModDevGradle project uses the same NeoForge and Parchment.
+    plugins.withId('net.neoforged.moddev') {
+        neoForge {
+            version = neo_version
+            parchment {
+                mappingsVersion = parchment_mappings_version
+                minecraftVersion = parchment_minecraft_version
+            }
+        }
+    }
+
+    // Expanded into the mod's neoforge.mods.toml.
+    tasks.named('processResources', ProcessResources) {
+        def props = [
+            mod_version      : mod_version,
+            api_version      : api_version,
+            neo_version      : neo_version,
+            minecraft_version: minecraft_version,
+            zas_floor_version: zas_floor_version,
+        ]
+        inputs.properties(props)
+        filesMatching('META-INF/neoforge.mods.toml') { expand(props) }
+    }
+}

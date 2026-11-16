@@ -1,0 +1,39 @@
+name: Bug report
+description: Something behaves wrongly, crashes or breaks a world.
+labels: ["type: bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Build a shuttle on ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "Expedition, ZAS³, NeoForge, and any related mods (e.g. CC: Tweaked)."
+      placeholder: "expedition 0.1.0, zas 1.1.0, NeoForge 21.1.264"
+    validations:
+      required: true
+  - type: dropdown
+    id: preset
+    attributes:
+      label: ZAS³ preset
+      options: ["Normal", "Hardcore", "Not sure"]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or crash report
+      description: Paste the relevant part, or link a gist.
+      render: text

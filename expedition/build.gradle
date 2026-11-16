@@ -1,0 +1,180 @@
+apply plugin: 'net.neoforged.moddev'
+
+base { archivesName = 'expedition' }
+
+// GameTests live in their own source set so they stay out of the mod jar.
+sourceSets {
+    gametest {
+        compileClasspath += main.output + main.compileClasspath
+        runtimeClasspath += main.output + main.runtimeClasspath
+    }
+}
+
+// Which ZAS³ the mod compiles against and its runs load. By default the newest release
+// (zas_version); -Pzas.version=floor is the oldest one Expedition supports (zas_floor_version),
+// and -Pzas.version=<version> any other release, with -Pzas.sha256=<hash> for its jar's hash.
+def zasChoice = providers.gradleProperty('zas.version').getOrElse('newest')
+def zasVersion
+def zasSha256
+switch (zasChoice) {
+    case 'newest':
+        zasVersion = zas_version
+        zasSha256 = zas_sha256
+        break
+    case 'floor':
+        zasVersion = zas_floor_version
+        zasSha256 = zas_floor_sha256
+        break
+    default:
+        zasVersion = zasChoice
+        zasSha256 = providers.gradleProperty('zas.sha256').getOrElse('')
+}
+zasSha256 = zasSha256.trim().toLowerCase()
+
+// The ZAS³ jar players install, which holds zas and zas_atmos and nests the ZAS³ API. It is the
+// jar attached to ZAS³'s GitHub release: an Ivy repository of bare jars, which answers for these
+// coordinates and nothing else, and which alone may answer for them.
+repositories {
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = 'zasRelease'
+                url = 'https://github.com/west3436/zas-cubed/releases/download'
+                patternLayout { artifact 'v[revision]/[artifact]-[revision].[ext]' }
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule('zas-release', 'zas') }
+    }
+}
+
+configurations {
+    // Mods that dev runs and GameTests load. Never published and never put in the jar.
+    localRuntime
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+neoForge {
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gametest
+            // Its own directory, so a GameTest run's world and its ZAS³ startup config never
+            // reach a dev client or server.
+            gameDirectory = layout.buildDirectory.dir('gametestRun')
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'expedition'
+            // The same heap everywhere, so a local run can't hide what CI runs out of. An OOM
+            // ends the run at once rather than at CI's time limit.
+            jvmArgument '-Xmx3G'
+            jvmArgument '-XX:+ExitOnOutOfMemoryError'
+        }
+    }
+    mods {
+        // The API is never listed: it loads as its own GAMELIBRARY module, and listing it splits
+        // its package across two modules.
+        expedition {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.gametest
+        }
+    }
+}
+
+// -Pcontent=off runs the GameTests with ZAS³'s content mod (zas_atmos) switched off in its startup
+// config: Expedition needs the simulation, not the content, so the game has to start and the tests
+// pass without it. Every GameTest run writes the config, on or off, so one run's choice never
+// reaches the next. The run also starts from a fresh world: ZAS³ saves the atmosphere with the
+// chunks, so a world left by an earlier run would bring its zones back into the tests' areas.
+def content = providers.gradleProperty('content').getOrElse('on')
+if (!(content in ['on', 'off'])) {
+    throw new GradleException("-Pcontent is on or off, not '${content}'")
+}
+def contentOn = content == 'on'
+def gametestRun = layout.buildDirectory.dir('gametestRun')
+
+// The ZAS³ jar a run loads is checked against the hash in gradle.properties first, since a
+// release's files can be replaced.
+def zasJar = configurations.detachedConfiguration(dependencies.create("zas-release:zas:${zasVersion}"))
+zasJar.transitive = false
+def verifyZasRelease = tasks.register('verifyZasRelease') {
+    group = 'verification'
+    description = "Checks the ZAS³ ${zasVersion} release jar against its SHA-256."
+    inputs.files(zasJar).withPropertyName('zasJar')
+    inputs.property('sha256', zasSha256)
+    doLast {
+        def jar = zasJar.singleFile
+        def sha256 = java.security.MessageDigest.getInstance('SHA-256').digest(jar.bytes).encodeHex().toString()
+        if (zasSha256.isEmpty()) {
+            logger.warn("verifyZasRelease: ${jar.name} is unverified. Pass -Pzas.sha256=<hash>: its line in " +
+                    "the release's SHA256SUMS.txt. This jar's SHA-256 is ${sha256}.")
+        } else if (sha256 != zasSha256) {
+            throw new GradleException("verifyZasRelease: ${jar.name} from ZAS³'s GitHub release v${zasVersion} " +
+                    "has SHA-256 ${sha256}, but ${zasSha256} is expected. It must be that jar's line in the " +
+                    "release's SHA256SUMS.txt.")
+        }
+    }
+}
+
+tasks.matching { it.name in ['runClient', 'runServer', 'runGameTestServer'] }.configureEach {
+    dependsOn verifyZasRelease
+}
+
+tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+    doFirst {
+        def dir = gametestRun.get().asFile
+        delete new File(dir, 'world')
+        def config = new File(dir, 'config/zas_atmos-startup.toml')
+        config.parentFile.mkdirs()
+        config.setText("[content]\nenabled = ${contentOn}\n", 'UTF-8')
+    }
+}
+
+// The compatibility matrix: the GameTests with ModernFix, FerriteCore and Lithium on the run's
+// classpath, as ZAS³ runs its own. Only -Pcompat.matrix=true adds these mods, and only to this
+// project's runs, so no jar and no ordinary run ever holds them. They come from Modrinth's maven.
+def compatMatrix = providers.gradleProperty('compat.matrix').getOrElse('false').toBoolean()
+if (compatMatrix) {
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven { url = 'https://api.modrinth.com/maven' }
+            }
+            filter { includeGroup 'maven.modrinth' }
+        }
+    }
+    neoForge.runs.gameTestServer.systemProperty 'expedition.compatMatrix', 'true'
+    dependencies {
+        ['modernfix:5.27.27+mc1.21.1', 'ferrite-core:7.0.3-neoforge', 'lithium:mc1.21.1-0.15.4-neoforge'].each {
+            localRuntime "maven.modrinth:$it"
+        }
+    }
+}
+
+dependencies {
+    implementation project(':expedition-api')
+
+    // ZAS³'s API, from Maven Central, to compile against only. At run time the API is the copy the
+    // ZAS³ jar nests, and a second copy on the classpath would be a second module of the same name.
+    compileOnly "io.github.west3436:zas-api:${zasVersion}"
+    localRuntime "zas-release:zas:${zasVersion}"
+
+    // ModDevGradle takes the jar-in-jar range only from a module selector, so
+    // the API is requested by coordinates and substituted with the project.
+    jarJar('io.github.west3436:expedition-api') {
+        version {
+            strictly api_range
+            prefer api_version
+        }
+    }
+}
+
+configurations.named('jarJar') {
+    resolutionStrategy.dependencySubstitution {
+        substitute module('io.github.west3436:expedition-api') using project(':expedition-api')
+    }
+}

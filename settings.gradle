@@ -1,0 +1,20 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        // com.vanniktech.maven.publish is published to Maven Central only.
+        mavenCentral()
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+// Not 'expedition': that is the mod's own project below, and two projects of one name confuse IDEs
+// and Gradle's own messages.
+rootProject.name = 'expedition-root'
+
+// The API project is named `expedition-api`, the same as its published artifactId: ModDevGradle
+// writes a project's jar-in-jar identity as group:<project name>, and a mismatch makes FML treat
+// consumers' copies and ours as one library and keep whichever it saw first. ZAS³ does the same.
+include 'expedition-api', 'expedition'
