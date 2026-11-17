@@ -58,6 +58,7 @@ jobs:
           fi
       - name: Build
         run: ./gradlew :expedition:jar :expedition-api:jar :expedition-api:sourcesJar :expedition-api:plainJavadocJar --stacktrace
+      # Four jars and SHA256SUMS.txt; cp fails the job if any jar is missing.
       - name: Collect
         shell: bash
         run: |
