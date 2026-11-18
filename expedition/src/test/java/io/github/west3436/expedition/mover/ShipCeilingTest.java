@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,38 @@ class ShipCeilingTest {
         assertTrue(ceiling.hopExceeds(box(16, 17, 16)));
         assertFalse(ShipCeiling.NONE.hopExceeds(box(64, 64, 64)));
         assertFalse(ShipCeiling.NONE.exceeds(box(1_000, 1_000, 1_000)));
+    }
+
+    @Test
+    void saysWhichLimitsABoxIsOverAndByHowMuch() {
+        ShipCeiling ceiling = ShipCeiling.of(() -> 131_072, () -> 64, () -> 4_096);
+        assertEquals(List.of(), ceiling.breaches(box(64, 32, 64)));
+        assertEquals(
+                List.of(new Obstacle.OverLimit(MoveRefusal.TOO_LARGE, Obstacle.OverLimit.VOLUME, 135_168, 131_072)),
+                ceiling.breaches(box(64, 33, 64)));
+        assertEquals(
+                List.of(new Obstacle.OverLimit(MoveRefusal.TOO_LARGE, Obstacle.OverLimit.LONGEST_SIDE, 65, 64)),
+                ceiling.breaches(box(65, 1, 1)));
+        assertEquals(
+                List.of(
+                        new Obstacle.OverLimit(
+                                MoveRefusal.TOO_LARGE, Obstacle.OverLimit.VOLUME, 65L * 65 * 65, 131_072),
+                        new Obstacle.OverLimit(MoveRefusal.TOO_LARGE, Obstacle.OverLimit.LONGEST_SIDE, 65, 64)),
+                ceiling.breaches(box(65, 65, 65)));
+        assertEquals(List.of(), ceiling.hopBreaches(box(16, 16, 16)));
+        Obstacle.OverLimit hop = ceiling.hopBreaches(box(16, 17, 16)).get(0);
+        assertEquals(
+                new Obstacle.OverLimit(MoveRefusal.HOP_TOO_LARGE, Obstacle.OverLimit.HOP_VOLUME, 4_352, 4_096), hop);
+        assertEquals(256, hop.over());
+        // A ceiling that only says yes or no can't say which.
+        assertEquals(List.of(), ShipCeiling.NONE.breaches(box(1_000, 1_000, 1_000)));
+    }
+
+    @Test
+    void writesCountsWithAThousandsSeparator() {
+        assertEquals("131,072", Obstacle.OverLimit.number(131_072));
+        assertEquals("64", Obstacle.OverLimit.number(64));
+        assertEquals("9,000,000,000,000", Obstacle.OverLimit.number(9_000_000_000_000L));
     }
 
     @Test

@@ -245,6 +245,7 @@ public final class MoveCommand {
             case Obstacle.InChunk chunk ->
                 Component.translatable(
                         KEY + "obstacle.chunk", chunk(chunk.level(), chunk.chunk()), dimension(chunk.level()));
+            case Obstacle.OverLimit limit -> Component.translatable(KEY + "obstacle.limit", limit.message());
             case Obstacle.OfMove move -> MoveRefusal.message(move.code());
         };
     }

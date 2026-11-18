@@ -65,11 +65,11 @@ final class ObstacleScan {
 
         ShipCeiling ceiling = ShipMover.ceiling();
         boolean tooLarge = ceiling.exceeds(box);
-        if (tooLarge && !add(new Obstacle.OfMove(MoveRefusal.TOO_LARGE))) {
+        if (tooLarge && !addLimits(ceiling.breaches(box), MoveRefusal.TOO_LARGE)) {
             return;
         }
         if (!tooLarge && request.overlaps() && ceiling.hopExceeds(box)) {
-            if (!add(new Obstacle.OfMove(MoveRefusal.HOP_TOO_LARGE))) {
+            if (!addLimits(ceiling.hopBreaches(box), MoveRefusal.HOP_TOO_LARGE)) {
                 return;
             }
         }
@@ -115,6 +115,24 @@ final class ObstacleScan {
     private boolean add(Obstacle obstacle) {
         found.add(obstacle);
         return all;
+    }
+
+    /**
+     * Notes the limits a box is over, or the move as a whole with {@code code} if the ceiling can't
+     * say which.
+     *
+     * @return true to look for more
+     */
+    private boolean addLimits(List<Obstacle.OverLimit> limits, String code) {
+        if (limits.isEmpty()) {
+            return add(new Obstacle.OfMove(code));
+        }
+        for (Obstacle.OverLimit limit : limits) {
+            if (!add(limit)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Whether every block of a box is inside a world border. */
