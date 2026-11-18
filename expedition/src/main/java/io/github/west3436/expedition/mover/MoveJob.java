@@ -1,6 +1,7 @@
 package io.github.west3436.expedition.mover;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -13,6 +14,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.decoration.BlockAttachedEntity;
+import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -32,8 +35,10 @@ import net.minecraft.world.phys.Vec3;
  *   <li><b>Carrying:</b> position by position, in {@link BoxWalk} order, each block, its block
  *       entity's saved state and its scheduled ticks go from the source to the destination in one
  *       step, with {@link QuietBlocks}. At every tick boundary each block is at exactly one end, so
- *       nothing is lost or made twice whatever the world does between ticks. When the last position
- *       is carried, in the same tick, the entities follow and the hand-over completes.
+ *       nothing is lost or made twice whatever the world does between ticks. In the first tick, each
+ *       entity that hangs on a block (an item frame, a painting, a leash knot) goes first, with the
+ *       positions it hangs on, so that it is never left without them. When the last position is
+ *       carried, in the same tick, the other entities follow and the hand-over completes.
  *   <li><b>Settling:</b> position by position over the faces of both boxes, the neighbours hear of
  *       the change ({@link QuietBlocks#settle}).
  * </ol>
@@ -66,6 +71,10 @@ public final class MoveJob {
     private Phase phase = Phase.WAITING;
     private boolean ticketOpen;
     private BoxWalk carry;
+    /** Positions already carried with an entity that hangs on them, which the walk passes over. */
+    private final Set<BlockPos> carriedFirst = new HashSet<>();
+
+    private boolean attachedCarried;
     private BoxWalk shell;
     private LevelChunk fromChunk;
     private LevelChunk toChunk;
@@ -273,8 +282,20 @@ public final class MoveJob {
 
     private void carry(TickBudget budget, long start) {
         boolean oneTick = request.overlaps();
+        if (!attachedCarried) {
+            attachedCarried = true;
+            // A move done in one tick carries everything before any entity can look.
+            if (!oneTick) {
+                carryAttached(budget);
+            }
+        }
         while (carry.hasNext() && (oneTick || !budget.spent(start))) {
-            carryOne(budget, carry.next(at));
+            BlockPos pos = carry.next(at);
+            if (carriedFirst.isEmpty() || !carriedFirst.contains(pos)) {
+                carryOne(budget, pos);
+            } else {
+                budget.spend(MoveSettings.POSITION);
+            }
         }
         if (carry.hasNext()) {
             return;
@@ -321,40 +342,81 @@ public final class MoveJob {
     }
 
     /**
+     * Carries each entity in the box that hangs on a block, an item frame, a painting or a leash
+     * knot, with the positions of the box it hangs on and those it fills, at the start of a move
+     * spread over several ticks. Left until the end, it would outlive the blocks that hold it up,
+     * and its next look at them, every 101 ticks, would pop it off, dropping it and what it holds.
+     */
+    private void carryAttached(TickBudget budget) {
+        BoundingBox box = request.box();
+        List<Entity> attached = request.from()
+                .getEntities(
+                        (Entity) null,
+                        AABB.of(box),
+                        e -> e instanceof BlockAttachedEntity
+                                && e.getRootVehicle() == e
+                                && !e.isRemoved()
+                                && box.isInside(e.blockPosition()));
+        for (Entity entity : List.copyOf(attached)) {
+            AABB fills = entity.getBoundingBox();
+            AABB holds = entity instanceof HangingEntity hanging
+                    ? fills.move(Vec3.atLowerCornerOf(
+                                    hanging.getDirection().getOpposite().getNormal())
+                            .scale(0.5))
+                    : fills;
+            for (AABB part : List.of(fills.deflate(1.0E-7), holds.deflate(1.0E-7))) {
+                for (BlockPos pos : BlockPos.betweenClosed(
+                        BlockPos.containing(part.minX, part.minY, part.minZ),
+                        BlockPos.containing(part.maxX, part.maxY, part.maxZ))) {
+                    if (box.isInside(pos) && carriedFirst.add(pos.immutable())) {
+                        carryOne(budget, pos);
+                    }
+                }
+            }
+            moveEntity(budget, entity);
+        }
+    }
+
+    /**
      * Carries every entity whose feet are in the box, with its passengers, by the move's offset. It
      * runs once the blocks are all in place, in the same tick, so an entity arrives standing on what
      * it stood on.
      */
     private void moveEntities(TickBudget budget) {
-        ServerLevel from = request.from();
-        ServerLevel to = request.to();
         BoundingBox box = request.box();
-        List<Entity> riders = from.getEntities(
-                (Entity) null,
-                AABB.of(box),
-                e -> e.getRootVehicle() == e && !e.isRemoved() && box.isInside(e.blockPosition()));
+        List<Entity> riders = request.from()
+                .getEntities(
+                        (Entity) null,
+                        AABB.of(box),
+                        e -> e.getRootVehicle() == e && !e.isRemoved() && box.isInside(e.blockPosition()));
         for (Entity entity : List.copyOf(riders)) {
-            budget.spend(MoveSettings.ENTITY);
-            Vec3 pos = entity.position().add(offset.getX(), offset.getY(), offset.getZ());
-            boolean arrived;
-            if (request.sameLevel()) {
-                arrived = entity.teleportTo(to, pos.x, pos.y, pos.z, Set.of(), entity.getYRot(), entity.getXRot());
-            } else {
-                arrived = entity.changeDimension(new DimensionTransition(
-                                to,
-                                pos,
-                                entity.getDeltaMovement(),
-                                entity.getYRot(),
-                                entity.getXRot(),
-                                DimensionTransition.DO_NOTHING))
-                        != null;
-            }
-            if (arrived) {
-                entities++;
-            } else {
-                entitiesLeft++;
-                ShipMover.LOGGER.warn("{} didn't go with the move of {}: its teleport was refused", entity, request);
-            }
+            moveEntity(budget, entity);
+        }
+    }
+
+    /** Carries one entity, with its passengers, by the move's offset. */
+    private void moveEntity(TickBudget budget, Entity entity) {
+        ServerLevel to = request.to();
+        budget.spend(MoveSettings.ENTITY);
+        Vec3 pos = entity.position().add(offset.getX(), offset.getY(), offset.getZ());
+        boolean arrived;
+        if (request.sameLevel()) {
+            arrived = entity.teleportTo(to, pos.x, pos.y, pos.z, Set.of(), entity.getYRot(), entity.getXRot());
+        } else {
+            arrived = entity.changeDimension(new DimensionTransition(
+                            to,
+                            pos,
+                            entity.getDeltaMovement(),
+                            entity.getYRot(),
+                            entity.getXRot(),
+                            DimensionTransition.DO_NOTHING))
+                    != null;
+        }
+        if (arrived) {
+            entities++;
+        } else {
+            entitiesLeft++;
+            ShipMover.LOGGER.warn("{} didn't go with the move of {}: its teleport was refused", entity, request);
         }
     }
 
