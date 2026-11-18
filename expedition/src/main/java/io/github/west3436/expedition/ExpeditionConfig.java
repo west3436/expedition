@@ -1,11 +1,13 @@
 package io.github.west3436.expedition;
 
 import io.github.west3436.expedition.api.planet.SpaceSquare;
+import io.github.west3436.expedition.drive.gas.GasThrusters;
 import io.github.west3436.expedition.mover.ShipCeiling;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.planet.PlanetBorders;
 import io.github.west3436.expedition.portal.PortalRules;
 import java.util.List;
+import java.util.function.Supplier;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
@@ -134,6 +136,57 @@ public final class ExpeditionConfig {
 
     static {
         BUILDER.pop();
+        BUILDER.comment("Ship drives: each engine's numbers.")
+                .translation(KEY + "drives")
+                .push("drives");
+        BUILDER.comment(
+                        "The gas thruster: burns a fuel gas with an oxidiser, from the tanks beside it. High thrust,",
+                        "low efficiency, low top speed: what lifts a ship off a planet.")
+                .translation(KEY + "gasThruster")
+                .push("gasThruster");
+    }
+
+    /** A gas thruster's thrust. */
+    public static final ModConfigSpec.DoubleValue GAS_THRUST = BUILDER.comment(
+                    "Thrust, in weight on the Overworld: 400 lifts a ship of mass 400 there, at a thrust-to-weight",
+                    "of 1. Taking off and landing need more than 1.")
+            .translation(KEY + "gasThrust")
+            .defineInRange("thrust", GasThrusters.Settings.DEFAULT.thrust(), 0.001, 1e9);
+
+    /** A gas thruster's efficiency. */
+    public static final ModConfigSpec.DoubleValue GAS_EFFICIENCY = BUILDER.comment(
+                    "Efficiency: momentum (mass x blocks per second) per unit of fuel. A trip burns",
+                    "2 x mass x cruise speed / efficiency. One unit is a mole of hydrogen; methane gives 3.3.")
+            .translation(KEY + "gasEfficiency")
+            .defineInRange("efficiency", GasThrusters.Settings.DEFAULT.efficiency(), 0.001, 1e9);
+
+    /** A gas thruster's top speed. */
+    public static final ModConfigSpec.DoubleValue GAS_TOP_SPEED = BUILDER.comment(
+                    "Top speed, in blocks per second. Above it the thruster stays cold.")
+            .translation(KEY + "gasTopSpeed")
+            .defineInRange("topSpeed", GasThrusters.Settings.DEFAULT.topSpeed(), 0.001, 1e6);
+
+    /** The oxidisers' partial pressure at which a gas thruster breathes air. */
+    public static final ModConfigSpec.DoubleValue GAS_AIR_BREATHING = BUILDER.comment(
+                    "The partial pressure of oxidisers (#zas:oxidizer), in kPa, behind the nozzle at which a",
+                    "thruster breathes the air and needs no oxidiser from its tanks. The Overworld's air has 21.")
+            .translation(KEY + "gasAirBreathing")
+            .defineInRange("airBreathingKpa", GasThrusters.Settings.DEFAULT.airBreathingKpa(), 0.0, 1e6);
+
+    /** The temperature of a gas thruster's exhaust. */
+    public static final ModConfigSpec.DoubleValue GAS_EXHAUST_TEMPERATURE = BUILDER.comment(
+                    "The exhaust's temperature, in kelvin, as it leaves the nozzle.")
+            .translation(KEY + "gasExhaustTemperature")
+            .defineInRange("exhaustTemperature", GasThrusters.Settings.DEFAULT.exhaustTemperature(), 1.0, 1e5);
+
+    /** The share of a burn's heat left behind a gas thruster's nozzle. */
+    public static final ModConfigSpec.DoubleValue GAS_EXHAUST_HEAT = BUILDER.comment(
+                    "The share of the burn's heat left behind the nozzle, 0 to 1. The rest leaves with the jet.")
+            .translation(KEY + "gasExhaustHeat")
+            .defineInRange("exhaustHeatShare", GasThrusters.Settings.DEFAULT.exhaustHeatShare(), 0.0, 1.0);
+
+    static {
+        BUILDER.pop(2);
     }
 
     /** The server settings' spec, registered as the mod's {@code SERVER} config. */
@@ -147,7 +200,21 @@ public final class ExpeditionConfig {
     public static final PortalRules.Settings PORTALS =
             new PortalRules.Settings(() -> flag(NETHER_PORTALS), () -> flag(END_PORTALS));
 
+    /** A gas thruster's numbers, read at every use. */
+    public static final Supplier<GasThrusters.Settings> GAS_THRUSTER = () -> new GasThrusters.Settings(
+            value(GAS_THRUST),
+            value(GAS_EFFICIENCY),
+            value(GAS_TOP_SPEED),
+            value(GAS_AIR_BREATHING),
+            value(GAS_EXHAUST_TEMPERATURE),
+            value(GAS_EXHAUST_HEAT));
+
     private ExpeditionConfig() {}
+
+    /** A setting's value, or its default while no world's settings are loaded. */
+    private static double value(ModConfigSpec.DoubleValue setting) {
+        return SPEC.isLoaded() ? setting.getAsDouble() : setting.getDefault();
+    }
 
     /** A setting's value, or its default while no world's settings are loaded. */
     private static boolean flag(ModConfigSpec.BooleanValue setting) {

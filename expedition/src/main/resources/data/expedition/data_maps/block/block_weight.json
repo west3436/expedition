@@ -68,6 +68,8 @@
     "#c:storage_blocks/redstone": 2,
 
     "#c:ores": 1.5,
-    "#c:obsidians": 3
+    "#c:obsidians": 3,
+
+    "expedition:gas_thruster": 3
   }
 }

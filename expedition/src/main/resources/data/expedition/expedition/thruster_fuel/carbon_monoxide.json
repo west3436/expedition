@@ -1,0 +1,8 @@
+{
+  "gas": "zas:carbon_monoxide",
+  "heat": 283000,
+  "oxidiser": 0.5,
+  "exhaust": {
+    "zas:carbon_dioxide": 1
+  }
+}

@@ -67,6 +67,8 @@ public final class MoveJob {
     private final List<ChunkPos> heldTo = new ArrayList<>();
     private final BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
     private final BlockPos.MutableBlockPos there = new BlockPos.MutableBlockPos();
+    /** The light checks of this tick's block changes, handed to the light engines as the tick's work ends. */
+    private final LightChecks lights = new LightChecks();
 
     private Phase phase = Phase.WAITING;
     private boolean ticketOpen;
@@ -218,6 +220,7 @@ public final class MoveJob {
             }
         } finally {
             working = false;
+            lights.flush();
             long spent = System.nanoTime() - start;
             nanos += spent;
             budget.spendNanos(spent);
@@ -323,13 +326,13 @@ public final class MoveJob {
         budget.spend(MoveSettings.BLOCK);
         CompoundTag saved = state.hasBlockEntity() ? QuietBlocks.takeBlockEntity(from, source, pos) : null;
         QuietBlocks.moveTicks(from, pos, state, to, offset);
-        QuietBlocks.set(from, source, pos, Blocks.AIR.defaultBlockState());
+        QuietBlocks.set(from, source, pos, Blocks.AIR.defaultBlockState(), lights);
         if (replaced.hasBlockEntity()) {
             // Only a replaceable block, such as a snow layer, was here when the move began: the checks
             // refused anything else. It is written over, without drops.
             target.removeBlockEntity(there);
         }
-        QuietBlocks.set(to, target, there, state);
+        QuietBlocks.set(to, target, there, state, lights);
         if (QuietBlocks.putBlockEntity(to, target, there, state, saved) != null) {
             budget.spend(MoveSettings.BLOCK_ENTITY);
             blockEntities++;
@@ -426,8 +429,10 @@ public final class MoveJob {
             budget.spend(MoveSettings.SETTLE);
             BlockPos pos = shell.next(at);
             there.setWithOffset(pos, offset);
-            QuietBlocks.settle(request.from(), pos);
-            QuietBlocks.settle(request.to(), there);
+            // Only the sides out of the box: inside, nothing changed relative to the block.
+            int sides = QuietBlocks.sidesOut(request.box(), pos.getX(), pos.getY(), pos.getZ());
+            QuietBlocks.settle(request.from(), pos, sides);
+            QuietBlocks.settle(request.to(), there, sides);
         }
         if (shell.hasNext()) {
             return;

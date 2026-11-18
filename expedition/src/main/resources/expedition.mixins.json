@@ -4,15 +4,19 @@
   "package": "io.github.west3436.expedition.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "ChunkAccessAccessor",
     "ChunkGeneratorStructureStateAccessor",
     "ChunkMapMixin",
     "ChunkStatusTasksMixin",
     "DelegateBorderChangeListenerAccessor",
     "EntityGravityMixin",
+    "HeightmapAccessor",
+    "LevelLightEngineAccessor",
     "NaturalSpawnerMixin",
     "PlayerListBorderListenerMixin",
     "PlayerListMixin",
     "PortalDestinationMixin",
+    "ThreadedLevelLightEngineMixin",
     "WorldBorderAccessor"
   ],
   "injectors": {

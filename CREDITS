@@ -65,3 +65,39 @@
 
 path: expedition/src/main/resources/assets/expedition/lang/en_us.json
 origin: original
+
+path: expedition/src/main/resources/assets/expedition/blockstates/shuttle_computer.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/models/block/shuttle_computer.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/models/item/shuttle_computer.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_front.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_side.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_top.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/blockstates/gas_thruster.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/models/block/gas_thruster.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/models/item/gas_thruster.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/block/gas_thruster_back.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/block/gas_thruster_nozzle.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/block/gas_thruster_side.png
+origin: original

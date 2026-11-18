@@ -182,12 +182,17 @@ if (compatMatrix) {
 // The move benchmark (#8): -Pbench=true runs only the GameTests of the expedition_bench namespace,
 // which no other run enables, so the benchmark never slows CI's GameTests. -Pbench.reps=<n> runs
 // each case n times (3), and -Pbench.sides=8,16 picks the boxes' sides (8,16,32,64). The Move
-// benchmark workflow runs it on a CI runner.
+// benchmark workflow runs it on a CI runner. -Pbench.jfr=<file> also records a Java Flight Recording
+// of the run, with allocation samples, to find what a move allocates (#69).
 def bench = providers.gradleProperty('bench').getOrElse('false').toBoolean()
 if (bench) {
     neoForge.runs.gameTestServer.systemProperty 'neoforge.enabledGameTestNamespaces', 'expedition_bench'
     neoForge.runs.gameTestServer.systemProperty 'expedition.bench.reps', providers.gradleProperty('bench.reps').getOrElse('3')
     neoForge.runs.gameTestServer.systemProperty 'expedition.bench.sides', providers.gradleProperty('bench.sides').getOrElse('8,16,32,64')
+    def jfr = providers.gradleProperty('bench.jfr').orNull
+    if (jfr != null) {
+        neoForge.runs.gameTestServer.jvmArgument "-XX:StartFlightRecording=filename=${jfr},settings=profile"
+    }
 }
 
 dependencies {
