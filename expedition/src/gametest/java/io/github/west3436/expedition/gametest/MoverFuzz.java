@@ -474,7 +474,11 @@ final class MoverFuzz {
                 run = new Run(world, specs.get(next++));
             }
             if (run.tick()) {
-                if (run.failure != null) {
+                if (run.failure != null && run.spec.sabotage() != Sabotage.NONE) {
+                    // The fuzz's own test, whose failures are meant: not logged as a seed's.
+                    LOGGER.info("Mover fuzz self-test: a {} sabotage failed as it should", run.spec.sabotage());
+                    failures.add(new Failure(run.spec.seed(), run.failure));
+                } else if (run.failure != null) {
                     LOGGER.error(run.failure);
                     failures.add(new Failure(run.spec.seed(), run.failure));
                 } else {
