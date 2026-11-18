@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.west3436.expedition.api.space.Space;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.registries.Registries;
@@ -61,6 +62,16 @@ class PlanetsTest {
                 PlanetGravity.of(kepler.dimension(), LogicalSide.CLIENT),
                 "off the client's planets");
         assertEquals(PlanetGravity.NORMAL, PlanetGravity.of(overworld, LogicalSide.SERVER), "the Overworld's gravity");
+        assertEquals(Space.GRAVITY, PlanetGravity.of(Space.DIMENSION, LogicalSide.SERVER), "Space's gravity");
+        assertEquals(Space.GRAVITY, PlanetGravity.of(Space.DIMENSION, LogicalSide.CLIENT), "Space's gravity, client");
+
+        // The planet under a column of Space: kepler's square runs from 9952 to 14048 along X.
+        assertEquals(Optional.of(kepler), Space.planetAt(12000, -4000, LogicalSide.SERVER));
+        assertEquals(Optional.of(kepler), Space.planetAt(9952, -6048, LogicalSide.SERVER), "the first column");
+        assertEquals(Optional.empty(), Space.planetAt(14048, -4000, LogicalSide.SERVER), "the first column past it");
+        assertEquals(Optional.empty(), Space.planetAt(12000, -4000, LogicalSide.CLIENT), "off the client's planets");
+        assertEquals(Optional.of(moon), Space.planetAt(20000, 1023, LogicalSide.CLIENT), "the moon, client");
+        assertEquals(Optional.empty(), Space.planetAt(0, 0, LogicalSide.SERVER), "between the squares");
 
         assertThrows(IllegalStateException.class, () -> Planets.install(side -> List.of()));
     }
