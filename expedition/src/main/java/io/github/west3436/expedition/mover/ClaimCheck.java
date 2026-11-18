@@ -1,5 +1,6 @@
 package io.github.west3436.expedition.mover;
 
+import io.github.west3436.expedition.api.space.Transit;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -32,6 +33,8 @@ import net.neoforged.neoforge.event.level.BlockEvent;
  *       {@link BlockEvent.EntityPlaceEvent} at the destination, which claim mods cancel where the
  *       player may not build. No claim mod is needed or named.
  * </ul>
+ *
+ * <p>Neither end is looked at in the transit dimension, which is the mod's own, a slot per ship.
  *
  * <p>The events are asked, not acted on: nothing is broken or placed, though a mod that listens may
  * tell the player it refused. A claim smaller than a chunk, between the positions looked at, can be
@@ -110,7 +113,9 @@ public final class ClaimCheck implements MoveCheck {
         if (player.server.getPlayerList().isOp(player.getGameProfile())) {
             return found;
         }
-        if (scan(request.from(), request.box(), false, all, found) || all) {
+        // The transit dimension is the mod's own, a slot per ship: no one claims land there.
+        boolean more = Transit.is(request.from()) || scan(request.from(), request.box(), false, all, found);
+        if ((more || all) && !Transit.is(request.to())) {
             scan(request.to(), request.destination(), true, all, found);
         }
         return found;

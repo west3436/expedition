@@ -287,6 +287,9 @@ public final class MoveJob {
             refuse(refusal.get());
             return;
         }
+        for (MoveCheck check : settings.checks()) {
+            check.cleared(request);
+        }
         // The box's own order unless the boxes overlap, in which case each destination must be
         // emptied before it is written, and the whole carry is done in this one tick. The server's
         // ceiling for a short hop (ShipCeiling.hopExceeds) keeps that tick bounded.
@@ -497,6 +500,15 @@ public final class MoveJob {
 
     private void finish() {
         phase = Phase.DONE;
+        // The hand-over carries on for a few ticks after the blocks: keep both ends loaded for it.
+        if (ticket == null || ticketOpen || ticket.ended().isDone()) {
+            releaseAll();
+        } else {
+            ticket.ended().whenComplete((r, e) -> releaseAll());
+        }
+    }
+
+    private void releaseAll() {
         release(request.from(), heldFrom);
         release(request.to(), heldTo);
     }

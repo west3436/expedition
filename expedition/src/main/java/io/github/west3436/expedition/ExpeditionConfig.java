@@ -2,6 +2,7 @@ package io.github.west3436.expedition;
 
 import io.github.west3436.expedition.api.planet.SpaceSquare;
 import io.github.west3436.expedition.drive.gas.GasThrusters;
+import io.github.west3436.expedition.flight.Flights;
 import io.github.west3436.expedition.mover.ShipCeiling;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.planet.PlanetBorders;
@@ -20,6 +21,9 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  *
  * <p>The {@code portals} section turns Nether and End portals off ({@link PortalRules}). Both are on
  * by default, and a change applies at once.
+ *
+ * <p>The {@code flights} section scales trip times and sets how rough a landing site may be ({@link
+ * Flights}).
  *
  * <p>The {@code ships} section is the server's ceiling on a ship's box ({@link ShipMover#ceiling()}).
  * It is a technical limit, not a game rule: ship size has no gameplay cap, since thrust against mass
@@ -187,6 +191,33 @@ public final class ExpeditionConfig {
 
     static {
         BUILDER.pop(2);
+        BUILDER.comment("Flights: how long trips take, and where ships may land.")
+                .translation(KEY + "flights")
+                .push("flights");
+    }
+
+    /** How much of the thrust model's time a trip spends in transit. */
+    public static final ModConfigSpec.DoubleValue TRIP_TIME = BUILDER.comment(
+                    "Scales every trip's time in transit. At 0.2, a well-powered ship takes about a minute to the",
+                    "Moon and about 5 minutes to the Nether. 1 is the thrust model's own time; lower is faster.")
+            .translation(KEY + "tripTimeMultiplier")
+            .defineInRange("tripTimeMultiplier", Flights.Settings.DEFAULT.tripTimeMultiplier(), 0.0001, 1000.0);
+
+    /** The most the ground under a landing ship may vary. */
+    public static final ModConfigSpec.IntValue MAX_UNEVENNESS = BUILDER.comment(
+                    "The most the ground under a ship's footprint may vary, in blocks, for it to land there. A",
+                    "landing over rougher ground is refused as too_uneven.")
+            .translation(KEY + "maxUnevenness")
+            .defineInRange("maxUnevenness", Flights.Settings.DEFAULT.maxUnevenness(), 0, 4096);
+
+    /** How long a launch counts down. */
+    public static final ModConfigSpec.IntValue WARM_UP = BUILDER.comment(
+                    "How long the drives warm up before a launch, in seconds, counted down in the action bar.")
+            .translation(KEY + "warmUpSeconds")
+            .defineInRange("warmUpSeconds", Flights.Settings.DEFAULT.warmUpTicks() / 20, 0, 600);
+
+    static {
+        BUILDER.pop();
     }
 
     /** The server settings' spec, registered as the mod's {@code SERVER} config. */
@@ -208,6 +239,10 @@ public final class ExpeditionConfig {
             value(GAS_AIR_BREATHING),
             value(GAS_EXHAUST_TEMPERATURE),
             value(GAS_EXHAUST_HEAT));
+
+    /** The flight settings, read at every use. */
+    public static final Supplier<Flights.Settings> FLIGHTS =
+            () -> new Flights.Settings(value(TRIP_TIME), value(MAX_UNEVENNESS), value(WARM_UP) * 20);
 
     private ExpeditionConfig() {}
 

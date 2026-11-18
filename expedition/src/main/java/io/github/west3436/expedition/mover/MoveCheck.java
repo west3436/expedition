@@ -36,4 +36,14 @@ public interface MoveCheck {
                 .<List<Obstacle>>map(code -> List.of(new Obstacle.OfMove(code)))
                 .orElse(List.of());
     }
+
+    /**
+     * Told once a move has passed every refusal and every check for the last time, once its
+     * hand-over is ready, just before its first block changes: from here the move goes ahead. A
+     * move refused, at either ask, never tells it. By default it does nothing; a trip's departure
+     * takes its fuel here (#29), so a refused departure burns none.
+     *
+     * @param request the move
+     */
+    default void cleared(MoveRequest request) {}
 }

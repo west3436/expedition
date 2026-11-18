@@ -2,6 +2,7 @@ package io.github.west3436.expedition.transit;
 
 import io.github.west3436.expedition.mover.MoveJob;
 import io.github.west3436.expedition.mover.MoveResult;
+import io.github.west3436.expedition.mover.MoveSettings;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -86,6 +87,17 @@ public final class TransitTrip {
 
     /** How many times the move now due has been refused for something that passes. */
     int attempts;
+
+    /** The departure move's settings, kept while the trip departs; never saved. Null for the default. */
+    @Nullable
+    MoveSettings departSettings;
+
+    /**
+     * The arrival move's settings, for the arrival scheduled now; never saved, so after a restart
+     * the default. Null for the default.
+     */
+    @Nullable
+    MoveSettings arriveSettings;
 
     /** The move under way, if any. */
     @Nullable
@@ -201,6 +213,19 @@ public final class TransitTrip {
      */
     public boolean hasArrived() {
         return status == Status.ARRIVED;
+    }
+
+    /**
+     * Where the ship's box arrives, if an arrival is scheduled.
+     *
+     * @return the box at its destination, in the {@link #destination() destination's} level, or empty
+     */
+    public Optional<BoundingBox> arrivalBox() {
+        if (arrival == null) {
+            return Optional.empty();
+        }
+        BlockPos o = arrival.origin();
+        return Optional.of(box.moved(o.getX() - box.minX(), o.getY() - box.minY(), o.getZ() - box.minZ()));
     }
 
     /**

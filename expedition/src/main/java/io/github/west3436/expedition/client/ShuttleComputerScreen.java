@@ -1,9 +1,14 @@
 package io.github.west3436.expedition.client;
 
+import io.github.west3436.expedition.api.planet.Planet;
+import io.github.west3436.expedition.flight.ComputerFlightPayload;
+import io.github.west3436.expedition.flight.FlightOrder;
+import io.github.west3436.expedition.flight.Flights;
 import io.github.west3436.expedition.ship.ComputerActionPayload;
 import io.github.west3436.expedition.ship.ComputerStatusPayload;
 import io.github.west3436.expedition.ship.ShipBox;
 import io.github.west3436.expedition.ship.ShipStatus;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +21,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.neoforged.fml.LogicalSide;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
@@ -23,6 +29,11 @@ import net.neoforged.neoforge.network.PacketDistributor;
  * the ship is: its mass, thrust, thrust-to-weight here, drives and fuel. It sits at the left of the
  * screen, so the pilot sees the outline of the box in the world ({@link ShipOutline}) while it is
  * open.
+ *
+ * <p>A second panel, at the right, is the flight controls (#29): a destination planet, a column of
+ * its surface, landing or orbit, and a cruise speed. Plot shows what the flight would take, or why
+ * it can't go, and Launch flies it. Only the owner or an operator may launch; the server says so to
+ * anyone else.
  */
 public final class ShuttleComputerScreen extends Screen {
     private static final int PANEL_WIDTH = 210;
@@ -42,6 +53,17 @@ public final class ShuttleComputerScreen extends Screen {
     private EditBox nameField;
     private int boxTop;
     private int readoutTop;
+
+    private List<Planet> planets = List.of();
+    private int planetIndex;
+    private boolean orbit;
+    private String xText = "";
+    private String zText = "";
+    private String speedText = "";
+    private EditBox xField;
+    private EditBox zField;
+    private EditBox speedField;
+    private int flightTop;
 
     private ShuttleComputerScreen(BlockPos pos, ShipStatus status) {
         super(Component.translatable("block.expedition.shuttle_computer"));
@@ -113,6 +135,101 @@ public final class ShuttleComputerScreen extends Screen {
                         Component.translatable("expedition.shuttle_computer.fit.tooltip")))
                 .build());
         readoutTop = fitY + 24;
+        initFlight();
+    }
+
+    /** The flight panel, at the right of the screen. */
+    private void initFlight() {
+        planets = Flights.destinations(LogicalSide.CLIENT);
+        if (planetIndex >= planets.size()) {
+            planetIndex = 0;
+        }
+        int left = width - PANEL_WIDTH + MARGIN;
+        int inner = PANEL_WIDTH - 2 * MARGIN;
+        int y = MARGIN + LINE + 4;
+        addRenderableWidget(Button.builder(destinationLabel(), b -> {
+                    if (!planets.isEmpty()) {
+                        planetIndex = (planetIndex + 1) % planets.size();
+                        xText = "";
+                        zText = "";
+                        rebuildWidgets();
+                    }
+                })
+                .bounds(left, y, inner, 18)
+                .build());
+        y += 24;
+        if (xText.isEmpty() && !planets.isEmpty()) {
+            xText = String.valueOf(planets.get(planetIndex).surface().centerX());
+            zText = String.valueOf(planets.get(planetIndex).surface().centerZ());
+        }
+        flightTop = y;
+        xField = number(left + 14, y, inner / 2 - 18, xText, s -> xText = s);
+        zField = number(left + inner / 2 + 14, y, inner / 2 - 14, zText, s -> zText = s);
+        y += 22;
+        addRenderableWidget(Button.builder(
+                        Component.translatable("expedition.shuttle_computer.flight." + (orbit ? "orbit" : "ground")),
+                        b -> {
+                            orbit = !orbit;
+                            rebuildWidgets();
+                        })
+                .bounds(left, y, inner, 18)
+                .build());
+        y += 22 + LINE;
+        speedField = number(left, y, inner, speedText, s -> speedText = s);
+        y += 22;
+        addRenderableWidget(Button.builder(
+                        Component.translatable("expedition.shuttle_computer.flight.plot"), b -> sendFlight(false))
+                .bounds(left, y, inner / 2 - 2, 18)
+                .build());
+        addRenderableWidget(Button.builder(
+                        Component.translatable("expedition.shuttle_computer.flight.launch"), b -> sendFlight(true))
+                .bounds(left + inner / 2 + 2, y, inner / 2 - 2, 18)
+                .tooltip(net.minecraft.client.gui.components.Tooltip.create(
+                        Component.translatable("expedition.shuttle_computer.flight.launch.tooltip")))
+                .build());
+    }
+
+    private EditBox number(int x, int y, int w, String value, java.util.function.Consumer<String> responder) {
+        EditBox box = new EditBox(font, x, y, w, 16, Component.empty());
+        box.setMaxLength(12);
+        box.setFilter(s -> s.matches("-?[0-9]*(\\.[0-9]*)?"));
+        box.setValue(value);
+        box.setResponder(responder);
+        addRenderableWidget(box);
+        return box;
+    }
+
+    private Component destinationLabel() {
+        Component planet = planets.isEmpty()
+                ? Component.translatable("expedition.shuttle_computer.flight.no_planets")
+                : Flights.name(planets.get(planetIndex).id());
+        return Component.translatable("expedition.shuttle_computer.flight.destination", planet);
+    }
+
+    /** Asks the server to plot, or launch, the flight the panel describes. */
+    private void sendFlight(boolean launch) {
+        if (planets.isEmpty()) {
+            return;
+        }
+        FlightOrder order =
+                new FlightOrder(planets.get(planetIndex).id(), whole(xText), whole(zText), orbit, decimal(speedText));
+        PacketDistributor.sendToServer(new ComputerFlightPayload(pos, launch, order));
+    }
+
+    private static int whole(String text) {
+        try {
+            return (int) Math.round(Double.parseDouble(text));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static double decimal(String text) {
+        try {
+            return Double.parseDouble(text);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     /** Moves one side of the box out (+) or in (-), five at a time with Shift. */
@@ -144,6 +261,8 @@ public final class ShuttleComputerScreen extends Screen {
         // Only the panel: the world stays visible, with the box's outline.
         graphics.fill(0, 0, PANEL_WIDTH, height, 0xC0101418);
         graphics.fill(PANEL_WIDTH, 0, PANEL_WIDTH + 1, height, 0xFF3A4450);
+        graphics.fill(width - PANEL_WIDTH, 0, width, height, 0xC0101418);
+        graphics.fill(width - PANEL_WIDTH - 1, 0, width - PANEL_WIDTH, height, 0xFF3A4450);
     }
 
     @Override
@@ -151,6 +270,22 @@ public final class ShuttleComputerScreen extends Screen {
         super.render(graphics, mouseX, mouseY, partialTick);
         int x = MARGIN;
         graphics.drawString(font, title, x, MARGIN, 0xFFFFFF);
+        int left = width - PANEL_WIDTH + MARGIN;
+        graphics.drawString(font, Component.translatable("expedition.shuttle_computer.flight"), left, MARGIN, 0xFFFFFF);
+        graphics.drawString(
+                font, Component.translatable("expedition.shuttle_computer.flight.x"), left, flightTop + 4, DIM);
+        graphics.drawString(
+                font,
+                Component.translatable("expedition.shuttle_computer.flight.z"),
+                left + (PANEL_WIDTH - 2 * MARGIN) / 2,
+                flightTop + 4,
+                DIM);
+        graphics.drawString(
+                font,
+                Component.translatable("expedition.shuttle_computer.flight.speed"),
+                left,
+                flightTop + 44 + 2,
+                DIM);
 
         int y = MARGIN + LINE + 4 + 20;
         Component owner = status.owner().isEmpty()

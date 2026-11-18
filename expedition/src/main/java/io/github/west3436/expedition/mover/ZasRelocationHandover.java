@@ -10,6 +10,7 @@ import io.github.west3436.zas.api.relocation.Relocations;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -78,6 +79,19 @@ public final class ZasRelocationHandover implements RelocationHandover {
     }
 
     /**
+     * Whether ZAS³ holds a position for a move ({@link Relocations#isMoving}): a cabin's air is still
+     * arriving there, or a move of it has begun.
+     *
+     * @param level the level
+     * @param pos the position
+     * @return true if it is held
+     */
+    @Override
+    public boolean holds(ServerLevel level, BlockPos pos) {
+        return Relocations.isMoving(level, pos);
+    }
+
+    /**
      * The refusal code for the outcome of a begin.
      *
      * @param outcome what ZAS³'s begin answered
@@ -130,6 +144,7 @@ public final class ZasRelocationHandover implements RelocationHandover {
          *
          * @return the future, the same one every time
          */
+        @Override
         public CompletableFuture<RelocationResult> ended() {
             return ended;
         }
