@@ -15,6 +15,7 @@
     "NaturalSpawnerMixin",
     "PlayerListBorderListenerMixin",
     "PlayerListMixin",
+    "PortalDestinationMixin",
     "ThreadedLevelLightEngineMixin",
     "WorldBorderAccessor"
   ],
