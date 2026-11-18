@@ -23,7 +23,7 @@ body:
     attributes:
       label: Versions
       description: "Expedition, ZAS³, NeoForge, and any related mods (e.g. CC: Tweaked)."
-      placeholder: "expedition 0.1.0, zas 1.1.0, NeoForge 21.1.264"
+      placeholder: "expedition 0.1.0, zas 1.2.0, NeoForge 21.1.264"
     validations:
       required: true
   - type: dropdown
