@@ -6,6 +6,7 @@ import io.github.west3436.expedition.api.space.Transit;
 import io.github.west3436.expedition.mover.MoveRefusal;
 import io.github.west3436.expedition.mover.MoveRequest;
 import io.github.west3436.expedition.mover.MoveResult;
+import io.github.west3436.expedition.mover.MoveSettings;
 import io.github.west3436.expedition.mover.ShipMover;
 import java.util.ArrayList;
 import java.util.List;
@@ -150,6 +151,25 @@ public final class Transits {
      *     dimension
      */
     public static TransitTrip depart(ServerLevel from, BoundingBox box, TransitRoute route) {
+        return depart(from, box, route, MoveSettings.DEFAULT);
+    }
+
+    /**
+     * Sends a box into transit, as {@link #depart(ServerLevel, BoundingBox, TransitRoute)} does, with
+     * the departure move's own settings: a flight's (#29) carry its pilot's claim check ({@link
+     * MoveSettings#startedBy}) and the check that takes its fuel. They are kept in memory only, as a
+     * departure is never saved.
+     *
+     * @param from the level the box is in
+     * @param box the box
+     * @param route the route the ship flies, in Space
+     * @param settings the departure move's settings, for every try of it
+     * @return the trip
+     * @throws IllegalStateException off the server thread, or if the server has no transit
+     *     dimension
+     */
+    public static TransitTrip depart(ServerLevel from, BoundingBox box, TransitRoute route, MoveSettings settings) {
+        Objects.requireNonNull(settings, "settings");
         MinecraftServer server = from.getServer();
         requireServerThread(server);
         Objects.requireNonNull(box, "box");
@@ -178,6 +198,7 @@ public final class Transits {
         }
         trip.from = from;
         trip.fromBox = box;
+        trip.departSettings = settings;
         data.trips.put(trip.id(), trip);
         hold(trip, from, box);
         hold(trip, transit, inSlot);
@@ -199,12 +220,32 @@ public final class Transits {
      */
     public static CompletableFuture<MoveResult> arrive(
             TransitTrip trip, ServerLevel to, BlockPos origin, long gameTime) {
+        return arrive(trip, to, origin, gameTime, MoveSettings.DEFAULT);
+    }
+
+    /**
+     * Schedules a trip's arrival, as {@link #arrive(TransitTrip, ServerLevel, BlockPos, long)} does,
+     * with the arrival move's own settings, such as a pilot's claim check. They are kept in memory
+     * only: an arrival still due when the server restarts moves with the default settings.
+     *
+     * @param trip the trip
+     * @param to the level the box goes to
+     * @param origin where the box's lowest corner goes
+     * @param gameTime when it arrives: the Overworld's game time, at which it starts the move
+     * @param settings the arrival move's settings, for every try of it
+     * @return the arrival's result: the move, or its refusal
+     * @throws IllegalStateException off the server thread, or if the trip has arrived or is arriving
+     */
+    public static CompletableFuture<MoveResult> arrive(
+            TransitTrip trip, ServerLevel to, BlockPos origin, long gameTime, MoveSettings settings) {
+        Objects.requireNonNull(settings, "settings");
         MinecraftServer server = to.getServer();
         requireServerThread(server);
         if (trip.status == TransitTrip.Status.ARRIVED || trip.status == TransitTrip.Status.ARRIVING) {
             throw new IllegalStateException(trip + " has arrived or is arriving");
         }
         trip.arrival = new TransitTrip.Arrival(to.dimension(), origin.immutable(), gameTime);
+        trip.arriveSettings = settings;
         trip.arrived = new CompletableFuture<>();
         trip.attempts = 0;
         trip.retryAt = 0;
@@ -290,12 +331,15 @@ public final class Transits {
         if (!loaded(trip.from, trip.fromBox) || !loaded(transit, trip.box())) {
             return;
         }
+        if (airArriving(trip.departSettings, trip.from, trip.fromBox)) {
+            return; // the ship only just landed: its air follows it in a few ticks
+        }
         MoveRequest request = new MoveRequest(
                 trip.from,
                 trip.fromBox,
                 transit,
                 new BlockPos(trip.box().minX(), trip.box().minY(), trip.box().minZ()));
-        trip.job = ShipMover.start(request);
+        trip.job = ShipMover.start(request, orDefault(trip.departSettings));
         trip.job.result().whenComplete((result, error) -> departed(server, data, transit, trip, result, error));
     }
 
@@ -317,6 +361,7 @@ public final class Transits {
             trip.status = TransitTrip.Status.IN_TRANSIT;
             trip.from = null;
             trip.fromBox = null;
+            trip.departSettings = null;
             trip.attempts = 0;
             for (ServerPlayer player : transit.players()) {
                 if (trip.box().isInside(player.blockPosition())) {
@@ -356,10 +401,13 @@ public final class Transits {
         if (!loaded(transit, trip.box()) || !loaded(to, destination)) {
             return;
         }
+        if (airArriving(trip.arriveSettings, transit, trip.box())) {
+            return; // a short trip: the cabin's air hasn't reached the slot yet
+        }
         MoveRequest request = new MoveRequest(transit, trip.box(), to, arrival.origin());
         trip.status = TransitTrip.Status.ARRIVING;
         try {
-            trip.job = ShipMover.start(request);
+            trip.job = ShipMover.start(request, orDefault(trip.arriveSettings));
         } catch (IllegalArgumentException e) {
             // The destination leaves its level's build height: no world could let it go ahead.
             trip.status = TransitTrip.Status.IN_TRANSIT;
@@ -625,6 +673,16 @@ public final class Transits {
         return chunks;
     }
 
+    /**
+     * Whether a box's air is still on its way into it from the move that put the ship there. A move
+     * ends once the blocks are in place, a few ticks before ZAS³ has brought the zones after them; a
+     * move of the box started before then would leave the air behind. The box is held whole by
+     * that relocation, so its middle stands for it.
+     */
+    private static boolean airArriving(@Nullable MoveSettings settings, ServerLevel level, BoundingBox box) {
+        return orDefault(settings).handover().holds(level, box.getCenter());
+    }
+
     private static boolean loaded(ServerLevel level, BoundingBox box) {
         for (ChunkPos pos : chunks(box)) {
             if (!level.hasChunk(pos.x, pos.z) || !level.areEntitiesLoaded(pos.toLong())) {
@@ -652,6 +710,10 @@ public final class Transits {
         }
         trip.held.clear();
         trip.holding = false;
+    }
+
+    private static MoveSettings orDefault(@Nullable MoveSettings settings) {
+        return settings == null ? MoveSettings.DEFAULT : settings;
     }
 
     private static void requireServerThread(MinecraftServer server) {

@@ -2,6 +2,7 @@ package io.github.west3436.expedition.mover;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -40,6 +41,21 @@ public interface RelocationHandover {
      * @return the ticket the mover completes or cancels
      */
     Ticket begin(ServerLevel from, BoundingBox box);
+
+    /**
+     * Whether a position is still held by a hand-over: what an earlier move carries hasn't arrived
+     * there yet, or a move of it has begun. A move ends once its blocks are in place, which can be a
+     * few game ticks before the other side has finished; a move of the same blocks started meanwhile
+     * would leave what is still on its way behind. A caller that moves a box again soon after, as a
+     * trip through transit does, waits until this is false. The mover itself doesn't ask.
+     *
+     * @param level the level
+     * @param pos the position
+     * @return true if it is held; false for a hand-over that keeps nothing
+     */
+    default boolean holds(ServerLevel level, BlockPos pos) {
+        return false;
+    }
 
     /** One hand-over in progress. */
     interface Ticket {
@@ -80,5 +96,17 @@ public interface RelocationHandover {
 
         /** Ends the hand-over without a move: nothing in the box changed. */
         void cancel();
+
+        /**
+         * Completes once the other side has finished, after {@link #complete} or {@link #cancel}: for
+         * ZAS³, once the zones have arrived, a few game ticks after the blocks. The mover keeps both
+         * ends' chunks loaded until then, since the zones can't arrive from or into a chunk that has
+         * unloaded, as the slot a ship just left in transit would at once.
+         *
+         * @return the future, the same one every time; it completes on the server thread
+         */
+        default CompletableFuture<?> ended() {
+            return CompletableFuture.completedFuture(null);
+        }
     }
 }

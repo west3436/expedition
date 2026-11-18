@@ -6,6 +6,8 @@ import io.github.west3436.expedition.command.MoveCommand;
 import io.github.west3436.expedition.command.PlanetCommand;
 import io.github.west3436.expedition.drive.gas.GasFuels;
 import io.github.west3436.expedition.drive.gas.GasThrusters;
+import io.github.west3436.expedition.flight.ComputerFlightPayload;
+import io.github.west3436.expedition.flight.Flights;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.planet.PlanetBorders;
 import io.github.west3436.expedition.planet.PlanetEvents;
@@ -55,6 +57,9 @@ public final class ExpeditionMod {
         BlockWeights.register(modBus);
         ExpeditionBlocks.register(modBus);
         modBus.addListener(ComputerStatusPayload::register);
+        modBus.addListener(ComputerFlightPayload::register);
+        Flights.setSettings(ExpeditionConfig.FLIGHTS);
+        Flights.register(NeoForge.EVENT_BUS);
         GasThrusters.setSettings(ExpeditionConfig.GAS_THRUSTER);
         GasThrusters.register();
         GasFuels.register(NeoForge.EVENT_BUS);
