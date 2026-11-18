@@ -84,7 +84,7 @@
   "expedition.planet.problem.unknown_dimension": "%s isn't a dimension on this server, so the planet can't be reached",
   "expedition.planet.problem.unknown_entity_type": "%s isn't an entity type",
   "expedition.planet.problem.unknown_field": "isn't a field here. The fields are: %s",
-  "expedition.planet.problem.unknown_gas": "%s isn't a gas ZAS³ defines",
+  "expedition.planet.problem.unknown_gas": "%s isn't a gas ZAS³ defines on this server, so the planet doesn't load",
   "expedition.planet.problem.unknown_parent": "%s isn't a planet that loads",
   "expedition.planet.problem.unknown_structure": "%s isn't a structure or a structure set",
   "expedition.planet.problem.unknown_structure_tag": "%s isn't a structure tag or a structure-set tag",

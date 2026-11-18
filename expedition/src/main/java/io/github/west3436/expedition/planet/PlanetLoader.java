@@ -4,7 +4,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.DynamicOps;
 import io.github.west3436.expedition.api.planet.Planet;
-import io.github.west3436.expedition.api.planet.PlanetAtmosphere;
 import io.github.west3436.expedition.api.planet.PlanetStructures;
 import io.github.west3436.expedition.api.planet.StructureRef;
 import io.github.west3436.expedition.planet.PlanetProblem.Severity;
@@ -21,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceKey;
@@ -247,12 +247,79 @@ public final class PlanetLoader {
     }
 
     /**
+     * Checks each loaded planet's gases against the gases ZAS³ defines, and fails every planet that
+     * names one it doesn't, with an error naming the gas (#15). ZAS³ loads its gases from the same
+     * datapacks, so they can only be known once a load has finished: the server checks them as it
+     * starts and after every {@code /reload}, before any client is sent the planets. A planet that
+     * fails is the parent of nothing that loads either.
+     *
+     * @param result the planets
+     * @param isGas whether ZAS³ defines a gas of this id
+     * @return the result without the failed planets, with their errors added; {@code result} itself
+     *     if every gas is known
+     */
+    public static Result checkGases(Result result, Predicate<ResourceLocation> isGas) {
+        Map<ResourceLocation, Planet> planets = new TreeMap<>(result.planets());
+        List<PlanetProblem> problems = new ArrayList<>(result.problems());
+        for (Planet planet : result.planets().values()) {
+            if (planet.atmosphere().isEmpty()) {
+                continue;
+            }
+            for (ResourceLocation gas :
+                    planet.atmosphere().get().partialPressures().keySet()) {
+                if (!isGas.test(gas)) {
+                    problems.add(error(
+                            result.files().get(planet.id()),
+                            "atmosphere.partial_pressures." + gas,
+                            "unknown_gas",
+                            gas.toString()));
+                    planets.remove(planet.id());
+                }
+            }
+        }
+        if (planets.size() == result.planets().size()) {
+            return result;
+        }
+        // A moon of a planet that failed fails too.
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (Planet planet : List.copyOf(planets.values())) {
+                Optional<ResourceLocation> parent = planet.space().parent();
+                if (parent.isPresent() && !planets.containsKey(parent.get())) {
+                    problems.add(error(
+                            result.files().get(planet.id()),
+                            "space.parent",
+                            "unknown_parent",
+                            parent.get().toString()));
+                    planets.remove(planet.id());
+                    changed = true;
+                }
+            }
+        }
+        Map<ResourceLocation, String> files = new LinkedHashMap<>(result.files());
+        files.keySet().retainAll(planets.keySet());
+        return new Result(planets, files, problems, result.read());
+    }
+
+    /**
+     * Checks the gases of a load against ZAS³'s, if ZAS³ is running.
+     *
+     * @param result the planets
+     * @return as {@link #checkGases(Result, Predicate)} with ZAS³'s gases, or {@code result} if ZAS³
+     *     isn't running
+     */
+    public static Result checkGases(Result result) {
+        return ZasApi.isPresent() ? checkGases(result, GasProperties::isDefined) : result;
+    }
+
+    /**
      * Checks what loaded planets name that only a running server knows: that each dimension is one
-     * of its levels, each gas one ZAS³ defines, and each structure, structure set and tag one its
-     * datapacks give. Also that its structure lists are the ones its level was built with: they
-     * change only at the next start. For a bounded planet ({@link PlanetBorders}), that its border
-     * is the one its file gives, and how many region files lie wholly past the border's void
-     * margin. These are warnings: the planet still loads.
+     * of its levels, and each structure, structure set and tag one its datapacks give. Also that its
+     * structure lists are the ones its level was built with: they change only at the next start.
+     * For a bounded planet ({@link PlanetBorders}), that its border is the one its file gives, and
+     * how many region files lie wholly past the border's void margin. These are warnings: the
+     * planet still loads. Gases are {@link #checkGases}'s, and errors.
      *
      * @param result the planets
      * @param server the server
@@ -270,15 +337,6 @@ public final class PlanetLoader {
                         "dimension",
                         "unknown_dimension",
                         dimension.location().toString()));
-            }
-            if (ZasApi.isPresent() && planet.atmosphere().isPresent()) {
-                PlanetAtmosphere air = planet.atmosphere().get();
-                for (ResourceLocation gas : air.partialPressures().keySet()) {
-                    if (!GasProperties.isDefined(gas)) {
-                        problems.add(
-                                warning(file, "atmosphere.partial_pressures." + gas, "unknown_gas", gas.toString()));
-                    }
-                }
             }
             checkStructures(
                     problems, file, "structures.allow", planet.structures().allow(), structures);
