@@ -1,0 +1,9 @@
+{
+  "expedition.move.refusal.blocked": "Something is in the way at the destination.",
+  "expedition.move.refusal.busy": "Part of this space is already being moved.",
+  "expedition.move.refusal.handover_failed": "The move couldn't be handed over to the atmosphere simulation.",
+  "expedition.move.refusal.immovable": "The ship holds a block that can't be moved.",
+  "expedition.move.refusal.server_stopping": "The server stopped before the move began.",
+  "expedition.move.refusal.too_large": "The ship is larger than this server allows.",
+  "expedition.move.refusal.unloaded": "Part of the ship or its destination isn't loaded."
+}
