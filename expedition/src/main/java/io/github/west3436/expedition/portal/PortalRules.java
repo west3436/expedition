@@ -1,5 +1,6 @@
 package io.github.west3436.expedition.portal;
 
+import io.github.west3436.expedition.api.space.Transit;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
 import net.minecraft.network.chat.Component;
@@ -32,6 +33,9 @@ import net.minecraft.world.level.block.Blocks;
  * <p>A Nether portal in any dimension but the Nether leads into the Nether, so it is stopped from
  * Space or a planet as from the Overworld; the same goes for End portals and the End.
  *
+ * <p>In the transit dimension no portal goes anywhere, whatever the settings: a ship in transit is
+ * left only by arriving.
+ *
  * <p>Thread: server thread.
  */
 public final class PortalRules {
@@ -40,6 +44,9 @@ public final class PortalRules {
 
     /** The action-bar message a player gets at an End portal that is turned off. */
     public static final String END_OFF = "expedition.portal.end_off";
+
+    /** The action-bar message a player gets at any portal in the transit dimension. */
+    public static final String IN_TRANSIT = "expedition.portal.in_transit";
 
     /**
      * Which portals take things in, read at each trip.
@@ -106,7 +113,9 @@ public final class PortalRules {
      */
     public static boolean refuses(Block portal, ServerLevel from, Entity entity) {
         String message;
-        if (portal == Blocks.NETHER_PORTAL) {
+        if (Transit.is(from) && (portal == Blocks.NETHER_PORTAL || portal == Blocks.END_PORTAL)) {
+            message = IN_TRANSIT;
+        } else if (portal == Blocks.NETHER_PORTAL) {
             if (leads(from, Level.NETHER, settings.nether())) {
                 return false;
             }

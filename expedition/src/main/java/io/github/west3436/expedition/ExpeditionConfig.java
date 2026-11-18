@@ -222,7 +222,7 @@ public final class ExpeditionConfig {
     }
 
     /** A setting's value, or its default while no world's settings are loaded. */
-    private static int value(ModConfigSpec.IntValue setting) {
+    static int value(ModConfigSpec.IntValue setting) {
         return SPEC.isLoaded() ? setting.getAsInt() : setting.getDefault();
     }
 }
