@@ -201,6 +201,9 @@ dependencies {
     // ZAS³ jar nests, and a second copy on the classpath would be a second module of the same name.
     compileOnly "io.github.west3436:zas-api:${zasVersion}"
     localRuntime "zas-release:zas:${zasVersion}"
+    // The GameTests that move ZAS³'s own blocks (#10) reach into its content mod, which ships in
+    // that jar, to fill pipes and link devices. Only the GameTests compile against it.
+    gametestCompileOnly "zas-release:zas:${zasVersion}"
 
     // ModDevGradle takes the jar-in-jar range only from a module selector, so
     // the API is requested by coordinates and substituted with the project.
