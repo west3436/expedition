@@ -150,6 +150,20 @@ class BoxWalkTest {
                 walk(BoxWalk.ahead(BOX, new Vec3i(0, -1, 0))).getFirst().getY());
     }
 
+    @ParameterizedTest
+    @MethodSource("boxes")
+    void aWalkCountsWhatIsLeft(BoundingBox box) {
+        for (BoxWalk walk : List.of(BoxWalk.topDown(box), BoxWalk.shell(box))) {
+            BlockPos.MutableBlockPos at = new BlockPos.MutableBlockPos();
+            long left = walk.remaining();
+            while (walk.hasNext()) {
+                walk.next(at);
+                assertEquals(--left, walk.remaining());
+            }
+            assertEquals(0, walk.remaining());
+        }
+    }
+
     @Test
     void aWalkCanStopAnywhereAndCarryOn() {
         BoxWalk walk = BoxWalk.topDown(BOX);

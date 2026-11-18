@@ -15,6 +15,7 @@ import io.github.west3436.expedition.api.planet.PlanetSurface;
 import io.github.west3436.expedition.api.planet.SpaceSquare;
 import io.github.west3436.expedition.api.planet.StructureRef;
 import io.github.west3436.expedition.api.space.Space;
+import io.github.west3436.expedition.api.space.Transit;
 import io.github.west3436.expedition.planet.PlanetProblem.Severity;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -51,7 +52,8 @@ public final class PlanetFormat {
     public static final String CONDITIONS = "neoforge:conditions";
 
     /** Expedition's own dimensions, which hold ships and planets' squares and are never planets. */
-    public static final Set<ResourceLocation> RESERVED = Set.of(Space.DIMENSION.location());
+    public static final Set<ResourceLocation> RESERVED =
+            Set.of(Space.DIMENSION.location(), Transit.DIMENSION.location());
 
     private PlanetFormat() {}
 

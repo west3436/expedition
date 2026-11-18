@@ -8,8 +8,14 @@ import javax.annotation.Nullable;
  * moves at once cost no more a tick than one.
  */
 final class TickBudget {
-    /** How many steps go between two reads of the clock. */
+    /** How many steps go between two reads of the clock, at most. */
     private static final int CLOCK_EVERY = 32;
+
+    /**
+     * How many work units go between two reads of the clock, at most: about 15 µs of carrying, or
+     * two positions of settling, so a costly step can't run far past the time (#70).
+     */
+    private static final int CLOCK_UNITS = 64;
 
     @Nullable
     private final TickBudget outer;
@@ -17,6 +23,7 @@ final class TickBudget {
     private int work;
     private long nanos;
     private int steps;
+    private int sinceClock;
 
     /**
      * A budget.
@@ -47,6 +54,7 @@ final class TickBudget {
      */
     void spend(int units) {
         work = units >= work ? 0 : work - units;
+        sinceClock += units;
         if (outer != null) {
             outer.spend(units);
         }
@@ -78,9 +86,11 @@ final class TickBudget {
         if (outer != null && outer.spent(since)) {
             return true;
         }
-        if (++steps % CLOCK_EVERY != 0 || nanos == Long.MAX_VALUE) {
+        if (nanos == Long.MAX_VALUE || (++steps < CLOCK_EVERY && sinceClock < CLOCK_UNITS)) {
             return false;
         }
+        steps = 0;
+        sinceClock = 0;
         return System.nanoTime() - since >= nanos;
     }
 }

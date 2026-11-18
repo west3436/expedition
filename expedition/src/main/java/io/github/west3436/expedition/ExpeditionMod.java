@@ -15,6 +15,7 @@ import io.github.west3436.expedition.portal.PortalRules;
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
 import io.github.west3436.expedition.ship.BlockWeights;
 import io.github.west3436.expedition.ship.ComputerStatusPayload;
+import io.github.west3436.expedition.transit.Transits;
 import io.github.west3436.expedition.worldgen.ExpeditionWorldgen;
 import io.github.west3436.zas.api.ZasApi;
 import net.neoforged.bus.api.IEventBus;
@@ -42,6 +43,8 @@ public final class ExpeditionMod {
         ExpeditionWorldgen.register(modBus);
         ShipMover.setCeiling(ExpeditionConfig.CEILING);
         PortalRules.setSettings(ExpeditionConfig.PORTALS);
+        Transits.setLongestSide(() -> ExpeditionConfig.value(ExpeditionConfig.MAX_LONGEST_SIDE));
+        Transits.register(NeoForge.EVENT_BUS);
         ShipMover.register(NeoForge.EVENT_BUS);
         MoveCommand.register(NeoForge.EVENT_BUS);
         PlanetRegistry.install();

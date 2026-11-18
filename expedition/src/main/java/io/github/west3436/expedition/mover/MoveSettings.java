@@ -15,8 +15,11 @@ import org.jetbrains.annotations.Nullable;
  * each block entity, {@link #ENTITY} for each entity, and {@link #SETTLE} for each position on the
  * faces of the two boxes whose neighbours it updates. In each tick the moves in progress share
  * {@code workPerTick} units and {@code nanosPerTick} of wall time, whichever runs out first, and
- * always make some progress. The defaults move a box of 16 blocks a side in one tick and one of 64
- * a side, full, in about two seconds; #8 measures what they cost.
+ * always make some progress. With the defaults, a full box of 8 blocks a side moves in one tick,
+ * one of 16 in about 3, one of 32 in about 10 and one of 64 in about 53, close to 3 seconds,
+ * counted once the hand-over is ready; an empty box takes about half as many. The last tick of
+ * carrying leaves room for the entities and the hand-over's completion (see {@link MoveJob}). #8
+ * measured what the defaults cost, and #69 and #70 measured them again.
  *
  * @param workPerTick the work units all moves together may spend in one tick, at least 1
  * @param nanosPerTick the wall time all moves together may spend in one tick, at least 1
@@ -37,7 +40,11 @@ public record MoveSettings(int workPerTick, long nanosPerTick, RelocationHandove
     /** Work for carrying one entity, with its passengers. */
     public static final int ENTITY = 32;
 
-    /** Work for updating the neighbours of one position on a face of either box. */
+    /**
+     * Work for updating the neighbours of one position on the faces of both boxes. #8 measured it at
+     * about 32 units' worth; since #69 tells only the neighbours outside the boxes, it costs about
+     * as much as carrying a block, 5 to 8 units (#70).
+     */
     public static final int SETTLE = 8;
 
     /**
