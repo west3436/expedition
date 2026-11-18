@@ -62,9 +62,15 @@ final class ObstacleScan {
         BoundingBox box = request.box();
         BoundingBox destination = request.destination();
 
-        boolean tooLarge = ShipMover.ceiling().exceeds(box);
+        ShipCeiling ceiling = ShipMover.ceiling();
+        boolean tooLarge = ceiling.exceeds(box);
         if (tooLarge && !add(new Obstacle.OfMove(MoveRefusal.TOO_LARGE))) {
             return;
+        }
+        if (!tooLarge && request.overlaps() && ceiling.hopExceeds(box)) {
+            if (!add(new Obstacle.OfMove(MoveRefusal.HOP_TOO_LARGE))) {
+                return;
+            }
         }
         for (MoveJob job : jobs) {
             if (job != self && (job.overlaps(from, box) || job.overlaps(to, destination))) {
