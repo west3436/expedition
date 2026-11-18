@@ -9,8 +9,8 @@ import net.minecraft.network.chat.Component;
  * #translationKey}.
  *
  * <p>The mover's own checks are asked in this order, and the first that refuses names the move's
- * refusal: {@link #TOO_LARGE}, {@link #BUSY}, {@link #UNLOADED}, {@link #IMMOVABLE}, {@link
- * #BLOCKED}. The checks in {@link MoveSettings#checks()} come after them, with codes of their own.
+ * refusal: {@link #TOO_LARGE}, {@link #HOP_TOO_LARGE}, {@link #BUSY}, {@link #UNLOADED}, {@link
+ * #IMMOVABLE}, {@link #BLOCKED}. The checks in {@link MoveSettings#checks()} come after them, with codes of their own.
  */
 public final class MoveRefusal {
     /**
@@ -28,6 +28,14 @@ public final class MoveRefusal {
 
     /** The box is over the server's ceiling, as {@link ShipMover#ceiling()} judges it. */
     public static final String TOO_LARGE = "too_large";
+
+    /**
+     * The move is a short hop, whose destination overlaps its own box, and the box is over the
+     * server's ceiling for one, as {@link ShipCeiling#hopExceeds} judges it. The mover carries a short
+     * hop whole in one tick, so a large one would stall the server; the same box may still move
+     * further, clear of itself.
+     */
+    public static final String HOP_TOO_LARGE = "hop_too_large";
 
     /** Either box overlaps a move in progress, at either end. */
     public static final String BUSY = "busy";

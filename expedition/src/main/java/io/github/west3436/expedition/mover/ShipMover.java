@@ -31,8 +31,8 @@ import org.slf4j.Logger;
  * #SERVER_NANOS_PER_TICK} of wall time, so many moves at once cost a tick no more than one.
  *
  * <p>A move that can't be honoured is refused whole, with a stable code ({@link MoveRefusal}), and
- * changes nothing at either end: a box over the server's {@link #ceiling()}, an overlap with a move in
- * progress, a chunk at either end (or a block beyond) or the entities of a box's chunks not loaded, a
+ * changes nothing at either end: a box over the server's {@link #ceiling()}, or a short hop over its
+ * ceiling for one, an overlap with a move in progress, a chunk at either end (or a block beyond) or the entities of a box's chunks not loaded, a
  * block in the {@link ExpeditionTags#IMMOVABLE immovable} tag in the box, or something in the way at
  * the destination. A move never destroys a block: only air and replaceable blocks, such as grass and
  * snow layers, are written over. {@link #dryRun} lists every obstacle without moving anything.
@@ -169,7 +169,7 @@ public final class ShipMover {
     }
 
     /**
-     * The server's ceiling on a ship's box.
+     * The server's ceiling on a ship's box. The mod sets it from its server settings when it loads.
      *
      * @return the ceiling; {@link ShipCeiling#NONE} until one is set
      */
@@ -178,8 +178,10 @@ public final class ShipMover {
     }
 
     /**
-     * Sets the server's ceiling on a ship's box, which every move from now on is checked against: the
-     * hook for the server setting of #9.
+     * Sets the server's ceiling on a ship's box, which every move from now on is checked against. The
+     * mod sets the one made from its server settings, which follows a reloaded config by itself; a
+     * caller that sets another, such as a benchmark lifting the ceiling, puts the old one back when it
+     * is done.
      *
      * @param ceiling the ceiling, or {@link ShipCeiling#NONE}
      */
