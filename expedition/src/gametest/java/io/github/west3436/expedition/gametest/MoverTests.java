@@ -1,6 +1,7 @@
 package io.github.west3436.expedition.gametest;
 
 import io.github.west3436.expedition.ExpeditionMod;
+import io.github.west3436.expedition.mover.LightChecks;
 import io.github.west3436.expedition.mover.MoveCheck;
 import io.github.west3436.expedition.mover.MoveJob;
 import io.github.west3436.expedition.mover.MoveRequest;
@@ -117,6 +118,7 @@ public final class MoverTests {
         BlockPos b = a.offset(100, 0, 0);
         BlockPos c = new BlockPos(b.getX(), 64, b.getZ());
         Run run = new Run();
+        long[] batches = {0};
         h.startSequence()
                 .thenWaitUntil(() -> {
                     hold(h, overworld, box(a));
@@ -132,10 +134,16 @@ public final class MoverTests {
                     ShipSurvey survey = ShipSurvey.of(overworld, box(a));
                     h.assertTrue(survey.equals(new ShipSurvey(MASS, BLOCKS, 2)), "the survey says " + survey);
                     run.before = snapshot(overworld, a, run.pig);
+                    batches[0] = LightChecks.batchesTaken();
                     run.job = ShipMover.start(MoveRequest.by(overworld, box(a), overworld, new Vec3i(100, 0, 0)));
                 })
                 .thenWaitUntil(() -> h.assertTrue(run.job.isDone(), "the move within the Overworld is still going"))
                 .thenExecute(() -> {
+                    // The light checks went to the light engine in batches (#69), and the light
+                    // still follows the torch below.
+                    h.assertTrue(
+                            LightChecks.batchesTaken() > batches[0],
+                            "the light engine took none of the move's batches");
                     assertCarriedAll(h, run.job.result().join());
                     assertArrived(h, run.before, overworld, b);
                     assertLeft(h, overworld, box(a), run.pig, false);
