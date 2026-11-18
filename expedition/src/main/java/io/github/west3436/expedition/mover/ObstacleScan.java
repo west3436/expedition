@@ -14,6 +14,7 @@ import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.entity.vehicle.VehicleEntity;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -80,6 +81,9 @@ final class ObstacleScan {
                 break;
             }
         }
+        if (!insideBorder(to.getWorldBorder(), destination) && !add(new Obstacle.OfMove(MoveRefusal.OUTSIDE_BORDER))) {
+            return;
+        }
         if (!bothEndsLoaded()) {
             return;
         }
@@ -111,6 +115,14 @@ final class ObstacleScan {
     private boolean add(Obstacle obstacle) {
         found.add(obstacle);
         return all;
+    }
+
+    /** Whether every block of a box is inside a world border. */
+    private static boolean insideBorder(WorldBorder border, BoundingBox box) {
+        return box.minX() >= border.getMinX()
+                && box.maxX() + 1 <= border.getMaxX()
+                && box.minZ() >= border.getMinZ()
+                && box.maxZ() + 1 <= border.getMaxZ();
     }
 
     /** The chunks at both ends, a block beyond, and the entities of the boxes' own chunks. */

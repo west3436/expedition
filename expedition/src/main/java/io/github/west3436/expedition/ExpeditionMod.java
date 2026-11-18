@@ -5,6 +5,7 @@ import io.github.west3436.expedition.api.ExpeditionApi;
 import io.github.west3436.expedition.command.MoveCommand;
 import io.github.west3436.expedition.command.PlanetCommand;
 import io.github.west3436.expedition.mover.ShipMover;
+import io.github.west3436.expedition.planet.PlanetBorders;
 import io.github.west3436.expedition.planet.PlanetEvents;
 import io.github.west3436.expedition.planet.PlanetRegistry;
 import io.github.west3436.expedition.planet.PlanetsPayload;
@@ -38,6 +39,7 @@ public final class ExpeditionMod {
         MoveCommand.register(NeoForge.EVENT_BUS);
         PlanetRegistry.install();
         PlanetEvents.register(NeoForge.EVENT_BUS);
+        PlanetBorders.register(modBus, NeoForge.EVENT_BUS);
         PlanetCommand.register(NeoForge.EVENT_BUS);
         modBus.addListener(PlanetsPayload::register);
     }

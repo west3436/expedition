@@ -317,7 +317,9 @@ public final class PlanetLoader {
      * Checks what loaded planets name that only a running server knows: that each dimension is one
      * of its levels, and each structure, structure set and tag one its datapacks give. Also that its
      * structure lists are the ones its level was built with: they change only at the next start.
-     * These are warnings: the planet still loads. Gases are {@link #checkGases}'s, and errors.
+     * For a bounded planet ({@link PlanetBorders}), that its border is the one its file gives, and
+     * how many region files lie wholly past the border's void margin. These are warnings: the
+     * planet still loads. Gases are {@link #checkGases}'s, and errors.
      *
      * @param result the planets
      * @param server the server
@@ -345,8 +347,34 @@ public final class PlanetLoader {
             if (applied.isPresent() && !applied.get().equals(planet.structures())) {
                 problems.add(warning(file, "structures", "structures_at_next_start"));
             }
+            if (server.getLevel(dimension) != null) {
+                checkBorder(problems, file, planet, server);
+            }
         }
         return problems;
+    }
+
+    /**
+     * A bounded planet's border: whether it is the one its file and the settings give now, and how
+     * many region files lie wholly past its void margin, generated before it was bounded.
+     */
+    private static void checkBorder(List<PlanetProblem> problems, String file, Planet planet, MinecraftServer server) {
+        Optional<PlanetBounds> applied = PlanetBorders.applied(planet.dimension());
+        if (!applied.equals(PlanetBorders.wanted(planet))) {
+            problems.add(warning(file, "", "border_at_next_start"));
+        }
+        if (applied.isPresent()) {
+            long regions = PlanetBorders.regionsPastCutoff(server, planet.dimension(), applied.get());
+            if (regions > 0) {
+                problems.add(warning(
+                        file,
+                        "",
+                        "regions_past_border",
+                        regions,
+                        planet.dimension().location().toString(),
+                        applied.get().voidMargin()));
+            }
+        }
     }
 
     private static void checkStructures(
