@@ -32,7 +32,8 @@ import org.slf4j.Logger;
  *
  * <p>A move that can't be honoured is refused whole, with a stable code ({@link MoveRefusal}), and
  * changes nothing at either end: a box over the server's {@link #ceiling()}, or a short hop over its
- * ceiling for one, an overlap with a move in progress, a chunk at either end (or a block beyond) or the entities of a box's chunks not loaded, a
+ * ceiling for one, an overlap with a move in progress, a destination outside its level's world
+ * border, a chunk at either end (or a block beyond) or the entities of a box's chunks not loaded, a
  * block in the {@link ExpeditionTags#IMMOVABLE immovable} tag in the box, or something in the way at
  * the destination. A move never destroys a block: only air and replaceable blocks, such as grass and
  * snow layers, are written over. {@link #dryRun} lists every obstacle without moving anything.

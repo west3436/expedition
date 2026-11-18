@@ -9,7 +9,7 @@ import net.minecraft.network.chat.Component;
  * #translationKey}.
  *
  * <p>The mover's own checks are asked in this order, and the first that refuses names the move's
- * refusal: {@link #TOO_LARGE}, {@link #HOP_TOO_LARGE}, {@link #BUSY}, {@link #UNLOADED}, {@link
+ * refusal: {@link #TOO_LARGE}, {@link #HOP_TOO_LARGE}, {@link #BUSY}, {@link #OUTSIDE_BORDER}, {@link #UNLOADED}, {@link
  * #IMMOVABLE}, {@link #BLOCKED}. The checks in {@link MoveSettings#checks()} come after them, with codes of their own.
  */
 public final class MoveRefusal {
@@ -39,6 +39,12 @@ public final class MoveRefusal {
 
     /** Either box overlaps a move in progress, at either end. */
     public static final String BUSY = "busy";
+
+    /**
+     * The destination box isn't wholly inside its level's world border: a bounded planet's ({@link
+     * io.github.west3436.expedition.planet.PlanetBorders}), or any border an operator set.
+     */
+    public static final String OUTSIDE_BORDER = "outside_border";
 
     /** The relocation hand-over threw instead of beginning. */
     public static final String HANDOVER_FAILED = "handover_failed";

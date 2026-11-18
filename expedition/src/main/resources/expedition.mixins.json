@@ -6,7 +6,12 @@
   "mixins": [
     "ChunkGeneratorStructureStateAccessor",
     "ChunkMapMixin",
-    "EntityGravityMixin"
+    "ChunkStatusTasksMixin",
+    "DelegateBorderChangeListenerAccessor",
+    "EntityGravityMixin",
+    "PlayerListBorderListenerMixin",
+    "PlayerListMixin",
+    "WorldBorderAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
