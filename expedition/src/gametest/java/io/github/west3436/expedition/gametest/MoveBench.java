@@ -8,6 +8,7 @@ import io.github.west3436.expedition.mover.MoveSettings;
 import io.github.west3436.expedition.mover.QuietBlocks;
 import io.github.west3436.expedition.mover.ShipMover;
 import java.io.IOException;
+import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -89,7 +90,10 @@ public final class MoveBench {
     /** The columns of each result. Times are in milliseconds and memory in MiB. */
     static final String HEADER = "case,side,fill,dims,rep,positions,blocks,block_entities,entities,ticks,wall_ms,"
             + "work_ms,max_tick_work_ms,max_server_tick_ms,idle_server_tick_ms,alloc_mib,idle_alloc_mib_per_tick,"
-            + "heap_delta_mib";
+            + "heap_delta_mib,gc_ms,worst_tick_at,worst_tick_gc_ms,max_tick_work_no_gc_ms";
+
+    /** The prefix of the log line that lists a move's ticks: the mover's work and the GC pauses in each. */
+    static final String TICKS = "MOVE_BENCH_TICKS ";
 
     /** The test's limit in game ticks: far more than the benchmark needs, which is a few thousand. */
     private static final int TIMEOUT = 400_000;
@@ -267,6 +271,9 @@ public final class MoveBench {
         private long startedAt;
         private long lastWork;
         private long maxTickWork;
+        private long lastGc;
+        private final List<Long> tickWork = new ArrayList<>();
+        private final List<Long> tickGc = new ArrayList<>();
         private long maxServerTick;
         private long allocAtStart;
         private long heapAtStart;
@@ -352,6 +359,9 @@ public final class MoveBench {
             allocAtStart = allocated();
             lastWork = 0;
             maxTickWork = 0;
+            tickWork.clear();
+            tickGc.clear();
+            lastGc = gcPauses();
             startedAt = System.nanoTime();
             job = ShipMover.start(new MoveRequest(overworld, c.box(), to, origin), MoveSettings.DEFAULT);
             // The start tick: the server's tick so far, and the work the call did.
@@ -366,8 +376,12 @@ public final class MoveBench {
         /** The mover's work since the last sample: one tick's. */
         private void sample() {
             long work = workSoFar(job);
+            long gc = gcPauses();
             maxTickWork = Math.max(maxTickWork, work - lastWork);
+            tickWork.add(work - lastWork);
+            tickGc.add(gc - lastGc);
             lastWork = work;
+            lastGc = gc;
         }
 
         private void end(Case c, long now) {
@@ -381,6 +395,16 @@ public final class MoveBench {
             }
             if (result.blocks() != built || result.entitiesLeft() != 0) {
                 throw new IllegalStateException(c.name() + " built " + built + " blocks but carried " + result);
+            }
+            int worst = 0;
+            long maxWithoutGc = 0;
+            for (int i = 0; i < tickWork.size(); i++) {
+                if (tickWork.get(i) > tickWork.get(worst)) {
+                    worst = i;
+                }
+                if (tickGc.get(i) == 0) {
+                    maxWithoutGc = Math.max(maxWithoutGc, tickWork.get(i));
+                }
             }
             String row = String.join(
                     ",",
@@ -401,8 +425,21 @@ public final class MoveBench {
                     fmt(median(idleTicks) / MS),
                     fmt(alloc / MIB),
                     fmt(median(idleAlloc) / MIB),
-                    fmt(heap / MIB));
+                    fmt(heap / MIB),
+                    fmt(sum(tickGc) / MS),
+                    Integer.toString(worst + 1),
+                    fmt(tickGc.get(worst) / MS),
+                    fmt(maxWithoutGc / MS));
             LOGGER.info("{}{}", LINE, row);
+            StringBuilder ticks =
+                    new StringBuilder(c.name()).append(',').append(c.rep).append(',');
+            for (int i = 0; i < tickWork.size(); i++) {
+                ticks.append(i == 0 ? "" : ";").append(fmt(tickWork.get(i) / MS));
+                if (tickGc.get(i) > 0) {
+                    ticks.append("(gc ").append(fmt(tickGc.get(i) / MS)).append(')');
+                }
+            }
+            LOGGER.info("{}{}", TICKS, ticks);
             if (!c.warmup) {
                 rows.add(row);
             }
@@ -589,6 +626,25 @@ public final class MoveBench {
         } catch (ReflectiveOperationException | RuntimeException e) {
             return 0;
         }
+    }
+
+    /** The time the JVM has spent paused for garbage collection so far, leaving out concurrent work. */
+    private static long gcPauses() {
+        long millis = 0;
+        for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
+            if (!gc.getName().contains("Concurrent") && gc.getCollectionTime() > 0) {
+                millis += gc.getCollectionTime();
+            }
+        }
+        return millis * 1_000_000L;
+    }
+
+    private static long sum(List<Long> values) {
+        long total = 0;
+        for (long v : values) {
+            total += v;
+        }
+        return total;
     }
 
     private static double median(List<Long> values) {
