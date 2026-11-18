@@ -21,10 +21,10 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  * are on disk now, and reports each problem with its file and field, without a restart or a {@code
  * /reload}. It changes nothing: the planets loaded stay as they are until the next {@code /reload}.
  *
- * <p>It checks what a {@code /reload} would, file by file and between files, and also what only a
- * running server knows: that each dimension is one of its levels, each gas one ZAS³ defines, and
- * each structure and tag one its datapacks give. Those are warnings, since such a planet still
- * loads. Every message is in the mod's {@code en_us.json}.
+ * <p>It checks what a {@code /reload} would, file by file and between files, and each gas against
+ * ZAS³'s, which fails a planet as it does after a load. It also checks that each dimension is one
+ * of the server's levels and each structure and tag one its datapacks give; those are warnings,
+ * since such a planet still loads. Every message is in the mod's {@code en_us.json}.
  *
  * <p>It needs permission level 2, the game masters', as {@code /expedition move} does. It only
  * reads, but it lists the server's datapack files.
@@ -72,8 +72,8 @@ public final class PlanetCommand {
         ConditionalOps<JsonElement> conditions = new ConditionalOps<>(
                 server.registryAccess().createSerializationContext(JsonOps.INSTANCE),
                 server.getServerResources().managers().getConditionContext());
-        PlanetLoader.Result result =
-                PlanetLoader.load(PlanetLoader.list(server.getResourceManager()), conditions, References.REGISTRIES);
+        PlanetLoader.Result result = PlanetLoader.checkGases(
+                PlanetLoader.load(PlanetLoader.list(server.getResourceManager()), conditions, References.REGISTRIES));
         return result.with(PlanetLoader.checkWorld(result, server));
     }
 

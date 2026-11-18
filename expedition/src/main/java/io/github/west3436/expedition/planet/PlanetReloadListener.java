@@ -24,6 +24,8 @@ public final class PlanetReloadListener extends SimplePreparableReloadListener<L
     protected void apply(List<PlanetLoader.Source> sources, ResourceManager resources, ProfilerFiller profiler) {
         PlanetLoader.Result result = PlanetLoader.load(sources, makeConditionalOps(), References.REGISTRIES);
         PlanetRegistry.setServer(result);
+        PlanetAir.update(
+                result.planets().values(), PlanetAir.zasFiles(result.planets().values(), resources));
         log(result);
     }
 

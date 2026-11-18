@@ -80,6 +80,20 @@ public record PlanetAtmosphere(
     }
 
     /**
+     * The temperature at a time of day: the day temperature at noon, the night temperature at
+     * midnight, and between them along the sun's height, so it changes slowly at noon and midnight
+     * and fastest at dawn and dusk.
+     *
+     * @param timeOfDay the time of day as {@link net.minecraft.world.level.Level#getTimeOfDay}
+     *     gives it: 0 at noon, 0.25 at sunset, 0.5 at midnight, 0.75 at sunrise
+     * @return the temperature in kelvin, from the night temperature to the day temperature
+     */
+    public double temperatureAt(double timeOfDay) {
+        double sun = (1 + Math.cos(timeOfDay * 2 * Math.PI)) / 2;
+        return nightTemperature + (dayTemperature - nightTemperature) * sun;
+    }
+
+    /**
      * One gas's partial pressure.
      *
      * @param gas the ZAS³ gas id
