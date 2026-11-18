@@ -1,6 +1,6 @@
 package io.github.west3436.expedition.mixin;
 
-import io.github.west3436.expedition.planet.PlanetStructures;
+import io.github.west3436.expedition.planet.StructureFilter;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
@@ -27,7 +27,7 @@ abstract class ChunkMapMixin {
     private ChunkGeneratorStructureState chunkGeneratorState;
 
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void expedition$applyPlanetStructures(CallbackInfo ci) {
-        PlanetStructures.apply(this.level, this.chunkGeneratorState);
+    private void expedition$applyStructureFilter(CallbackInfo ci) {
+        StructureFilter.apply(this.level, this.chunkGeneratorState);
     }
 }

@@ -1,7 +1,7 @@
 package io.github.west3436.expedition.gametest;
 
 import io.github.west3436.expedition.ExpeditionMod;
-import io.github.west3436.expedition.planet.PlanetStructures;
+import io.github.west3436.expedition.planet.StructureFilter;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.world.level.Level;
@@ -16,8 +16,8 @@ import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
 public final class TestPlanetStructures {
     /** The Nether's lists. */
-    public static final PlanetStructures.Lists NETHER =
-            new PlanetStructures.Lists(List.of(), List.of("minecraft:bastion_remnant"));
+    public static final StructureFilter.Lists NETHER =
+            new StructureFilter.Lists(List.of(), List.of("minecraft:bastion_remnant"));
 
     private TestPlanetStructures() {}
 
@@ -28,7 +28,6 @@ public final class TestPlanetStructures {
      */
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
-        PlanetStructures.setSource(
-                dimension -> dimension.equals(Level.NETHER) ? Optional.of(NETHER) : Optional.empty());
+        StructureFilter.setSource(dimension -> dimension.equals(Level.NETHER) ? Optional.of(NETHER) : Optional.empty());
     }
 }

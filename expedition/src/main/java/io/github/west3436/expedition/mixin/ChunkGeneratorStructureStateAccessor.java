@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 /**
- * Lets {@link io.github.west3436.expedition.planet.PlanetStructures} replace a level's structure
+ * Lets {@link io.github.west3436.expedition.planet.StructureFilter} replace a level's structure
  * sets. The list drives both structure generation ({@code ChunkGenerator#createStructures}) and
  * locating ({@code generatePositions}, which {@code findNearestMapStructure} reads).
  */

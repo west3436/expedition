@@ -37,7 +37,7 @@ import org.slf4j.Logger;
  * the structure it picks can't generate there: with bastions denied, every Nether complex is a
  * fortress. To remove a whole set, deny the set.
  */
-public final class PlanetStructures {
+public final class StructureFilter {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     /**
@@ -107,7 +107,7 @@ public final class PlanetStructures {
                 }
             };
 
-    private PlanetStructures() {}
+    private StructureFilter() {}
 
     /**
      * Sets where the lists come from. Levels built after this use it.
@@ -115,7 +115,7 @@ public final class PlanetStructures {
      * @param source the source
      */
     public static void setSource(Source source) {
-        PlanetStructures.source = Objects.requireNonNull(source);
+        StructureFilter.source = Objects.requireNonNull(source);
     }
 
     /**
@@ -187,12 +187,12 @@ public final class PlanetStructures {
             public Optional<Set<ResourceLocation>> structureTag(ResourceLocation tag) {
                 return structures
                         .getTag(TagKey.create(Registries.STRUCTURE, tag))
-                        .map(PlanetStructures::ids);
+                        .map(StructureFilter::ids);
             }
 
             @Override
             public Optional<Set<ResourceLocation>> setTag(ResourceLocation tag) {
-                return sets.getTag(TagKey.create(Registries.STRUCTURE_SET, tag)).map(PlanetStructures::ids);
+                return sets.getTag(TagKey.create(Registries.STRUCTURE_SET, tag)).map(StructureFilter::ids);
             }
         };
     }
