@@ -115,6 +115,18 @@ class PlanetValuesTest {
     }
 
     @Test
+    void theTemperatureFollowsTheSun() {
+        PlanetAtmosphere air = new PlanetAtmosphere(Map.of(id("n"), 1.0), 210, 150, false);
+        assertEquals(210, air.temperatureAt(0), 1e-9, "noon");
+        assertEquals(150, air.temperatureAt(0.5), 1e-9, "midnight");
+        assertEquals(180, air.temperatureAt(0.25), 1e-9, "sunset");
+        assertEquals(180, air.temperatureAt(0.75), 1e-9, "sunrise");
+        assertEquals(210, air.temperatureAt(1), 1e-9, "noon again");
+        PlanetAtmosphere steady = new PlanetAtmosphere(Map.of(id("n"), 1.0), 288, 288, false);
+        assertEquals(288, steady.temperatureAt(0.4), 1e-9, "one temperature for day and night");
+    }
+
+    @Test
     void oresAndMobsCheckTheirNumbers() {
         assertTrue(new PlanetOre(IRON, 1, 8, PlanetOre.MIN_Y, PlanetOre.MAX_Y).anyHeight());
         assertFalse(new PlanetOre(IRON, 1, 8, 0, 0).anyHeight());
