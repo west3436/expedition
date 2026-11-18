@@ -9,6 +9,7 @@ import io.github.west3436.expedition.mover.MoveJob;
 import io.github.west3436.expedition.mover.MoveRefusal;
 import io.github.west3436.expedition.mover.MoveRequest;
 import io.github.west3436.expedition.mover.MoveResult;
+import io.github.west3436.expedition.mover.MoveSettings;
 import io.github.west3436.expedition.mover.Obstacle;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.mover.ShipSurvey;
@@ -39,7 +40,9 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 /**
  * {@code /expedition move}, an operator's way to drive the mover in a real world, for testing and
- * bug reports. It is not how players move ships: it ignores fuel, thrust and ownership.
+ * bug reports. It is not how players move ships: it ignores fuel, thrust and ownership. A move run
+ * by a player is still refused where that player may not build ({@link MoveSettings#startedBy}),
+ * unless they are an operator.
  *
  * <pre>
  * /expedition move &lt;from&gt; &lt;to&gt; &lt;dimension&gt; &lt;destination&gt; [dry-run]
@@ -117,6 +120,7 @@ public final class MoveCommand {
         ServerLevel to = DimensionArgument.getDimension(context, "dimension");
         BlockPos origin = BlockPosArgument.getBlockPos(context, "destination");
         MoveRequest request = new MoveRequest(from, box, to, origin);
+        MoveSettings settings = MoveSettings.DEFAULT.startedBy(source.getPlayer());
         // The mover throws on these, since no world could let them go ahead; the operator is told why.
         if (request.sameLevel() && request.offset().equals(Vec3i.ZERO)) {
             throw NOWHERE.create(position(from.dimension(), origin));
@@ -125,9 +129,9 @@ public final class MoveCommand {
         requireInside(to, request.destination());
 
         if (dryRun) {
-            return dryRun(source, request);
+            return dryRun(source, request, settings);
         }
-        MoveJob job = ShipMover.start(request);
+        MoveJob job = ShipMover.start(request, settings);
         CompletableFuture<MoveResult> result = job.result();
         if (!result.isDone()) {
             source.sendSuccess(
@@ -138,7 +142,7 @@ public final class MoveCommand {
                             dimension(to.dimension())),
                     true);
         }
-        result.whenComplete((moved, error) -> report(source, request, moved, error));
+        result.whenComplete((moved, error) -> report(source, request, settings, moved, error));
         if (!result.isDone()) {
             return 1;
         }
@@ -151,8 +155,8 @@ public final class MoveCommand {
         }
     }
 
-    private static int dryRun(CommandSourceStack source, MoveRequest request) {
-        DryRun dry = ShipMover.dryRun(request);
+    private static int dryRun(CommandSourceStack source, MoveRequest request, MoveSettings settings) {
+        DryRun dry = ShipMover.dryRun(request, settings);
         if (dry.wouldMove()) {
             ShipSurvey survey = ShipSurvey.of(request.from(), request.box());
             source.sendSuccess(
@@ -168,7 +172,8 @@ public final class MoveCommand {
     }
 
     /** Says how a move ended, once it has: on the server thread, as the move's result completes. */
-    private static void report(CommandSourceStack source, MoveRequest request, MoveResult result, Throwable error) {
+    private static void report(
+            CommandSourceStack source, MoveRequest request, MoveSettings settings, MoveResult result, Throwable error) {
         if (error != null) {
             source.sendFailure(Component.translatable(KEY + "failed", String.valueOf(error)));
             return;
@@ -195,7 +200,7 @@ public final class MoveCommand {
         source.sendFailure(Component.translatable(KEY + "refused", MoveRefusal.message(code), code));
         // The refusal names the first reason; a dry run of the same move, now, names every one. The
         // move changed nothing, so the world is as it was refused, unless it changed while waiting.
-        DryRun dry = ShipMover.dryRun(request);
+        DryRun dry = ShipMover.dryRun(request, settings);
         if (!dry.wouldMove()) {
             reasons(source, dry);
         }
