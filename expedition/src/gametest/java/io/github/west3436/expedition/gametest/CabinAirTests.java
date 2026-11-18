@@ -38,6 +38,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
+import net.minecraft.locale.Language;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -217,6 +218,30 @@ public final class CabinAirTests {
                     wipe(overworld, box(b));
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * Every begin that didn't take refuses the move: a move that went ahead without ZAS³'s begin
+     * would vent the cabin and leave ZAS³'s device links unre-based (#10). Only {@code BEGUN}, and
+     * {@code ABSENT} without ZAS³, let it go, and each refusal is a code with a message.
+     */
+    @GameTest(template = "empty", batch = BATCH)
+    public static void every_begin_that_didnt_take_refuses_the_move(GameTestHelper h) {
+        for (RelocationOutcome outcome : RelocationOutcome.values()) {
+            Optional<String> refusal = ZasRelocationHandover.refusal(outcome);
+            boolean goes = outcome == RelocationOutcome.BEGUN || outcome == RelocationOutcome.ABSENT;
+            h.assertTrue(refusal.isEmpty() == goes, outcome + " gives " + refusal);
+            if (refusal.isPresent()) {
+                String code = refusal.get();
+                h.assertTrue(code.startsWith(ZasRelocationHandover.REFUSAL_PREFIX), outcome + " gives " + code);
+                // MOVED and CANCELLED never answer a begin, so they need no message.
+                boolean answersBegin = outcome != RelocationOutcome.MOVED && outcome != RelocationOutcome.CANCELLED;
+                h.assertTrue(
+                        !answersBegin || Language.getInstance().has(MoveRefusal.translationKey(code)),
+                        outcome + " gives " + code + ", which has no message in en_us.json");
+            }
+        }
+        h.succeed();
     }
 
     /**

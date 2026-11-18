@@ -8,13 +8,11 @@ import io.github.west3436.expedition.mover.MoveSettings;
 import io.github.west3436.expedition.mover.QuietBlocks;
 import io.github.west3436.expedition.mover.RelocationHandover;
 import io.github.west3436.expedition.mover.ShipMover;
+import io.github.west3436.expedition.mover.ZasRelocationHandover;
 import io.github.west3436.zas.api.gas.GasParcel;
 import io.github.west3436.zas.api.gas.StandardAir;
-import io.github.west3436.zas.api.mutation.SourceId;
-import io.github.west3436.zas.api.relocation.Destination;
 import io.github.west3436.zas.api.relocation.RelocationOutcome;
 import io.github.west3436.zas.api.relocation.RelocationResult;
-import io.github.west3436.zas.api.relocation.RelocationTicket;
 import io.github.west3436.zas.api.relocation.Relocations;
 import io.github.west3436.zas.atmos.ZasAtmosMod;
 import io.github.west3436.zas.atmos.airlock.AirSensorBlockEntity;
@@ -39,7 +37,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -82,13 +79,14 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * <p>Each ship moves twice over, once with each hand-over:
  *
  * <ul>
- *   <li><b>None</b> ({@link RelocationHandover#NONE}, the mover's default until #11). Gas, block
+ *   <li><b>None</b> ({@link RelocationHandover#NONE}, the mover's default before #11). Gas, block
  *       states and saved data all arrive, but a controller's links are absolute positions, and
  *       nothing tells it the blocks moved: it arrives naming the old place, and drops each link at
  *       its next step, since the old place is now air. Its devices arrive unlinked. The tests below
  *       assert exactly that, so they pass while recording it; each leg links the devices again
  *       before it moves.
- *   <li><b>ZAS³'s relocation</b> ({@link Relocations}, which #11 wires into the mover). Its {@code
+ *   <li><b>ZAS³'s relocation</b> ({@link ZasRelocationHandover}, the mover's default since #11, over
+ *       {@link Relocations}). Its {@code
  *       complete} fires {@code BlocksMovedEvent}, and ZAS³'s {@code MovedDevices} re-bases every
  *       link inside the box onto where it went, within a dimension and into another. The links
  *       work at the destination.
@@ -111,9 +109,6 @@ public final class ZasContentMoveTests {
 
     private static final TicketType<ChunkPos> HELD =
             TicketType.create("expedition_gametest_zas_held", Comparator.comparingLong(ChunkPos::toLong), TIMEOUT);
-
-    /** Who the tests' ZAS³ relocations are made by. */
-    private static final SourceId MOVER = SourceId.of(ExpeditionMod.MOD_ID, "gametest_mover");
 
     private static final ResourceLocation CO2 = ResourceLocation.fromNamespaceAndPath("zas", "carbon_dioxide");
 
@@ -270,7 +265,8 @@ public final class ZasContentMoveTests {
         final boolean zas;
         Map<Vec3i, BlockState> before;
         MoveJob job;
-        ZasRelocation relocation;
+        /** The mover's own ZAS³ ticket for the last move, when it moved with ZAS³'s relocation. */
+        ZasRelocationHandover.ZasTicket zasTicket;
         /** The controller's links as the hand-over completed: the moment the blocks had all arrived. */
         Set<BlockPos> linksOnArrival;
 
@@ -286,10 +282,13 @@ public final class ZasContentMoveTests {
         void start(ServerLevel from, BlockPos corner, ServerLevel to, BlockPos origin) {
             before = blocks(from, corner, ship.size());
             linksOnArrival = null;
-            relocation = zas ? new ZasRelocation() : null;
-            RelocationHandover inner = zas ? relocation : RelocationHandover.NONE;
+            zasTicket = null;
+            RelocationHandover inner = zas ? ZasRelocationHandover.INSTANCE : RelocationHandover.NONE;
             RelocationHandover peek = (level, box) -> {
                 RelocationHandover.Ticket ticket = inner.begin(level, box);
+                if (ticket instanceof ZasRelocationHandover.ZasTicket own) {
+                    zasTicket = own;
+                }
                 return new RelocationHandover.Ticket() {
                     @Override
                     public CompletableFuture<Optional<String>> begun() {
@@ -334,7 +333,7 @@ public final class ZasContentMoveTests {
         /** Throws until the ship has settled at its new place, then checks what works there. */
         void settled(GameTestHelper h, ServerLevel level, BlockPos corner) {
             if (zas) {
-                CompletableFuture<RelocationResult> completed = relocation.completed;
+                CompletableFuture<RelocationResult> completed = zasTicket == null ? null : zasTicket.ended();
                 h.assertTrue(completed != null && completed.isDone(), "ZAS³'s relocation hasn't finished");
                 RelocationResult result = completed.join();
                 h.assertTrue(
@@ -882,47 +881,6 @@ public final class ZasContentMoveTests {
             VentBlockEntity vent = entity(level, corner.offset(VENT), VentBlockEntity.class);
             h.assertFalse(vent.airlockControlled(), "an airlock controller orders the moved vent");
             h.assertTrue(c.cycling() < 0, "the controller is cycling");
-        }
-    }
-
-    // ---- ZAS³'s relocation ---------------------------------------------------------------
-
-    /**
-     * The hand-over through ZAS³'s {@link Relocations}: begin before the blocks change, complete once
-     * they have all arrived, which fires {@code BlocksMovedEvent}. A begin that doesn't take refuses
-     * the move. #11 makes this the mover's own; until then the tests carry their own.
-     */
-    private static final class ZasRelocation implements RelocationHandover {
-        CompletableFuture<RelocationResult> completed;
-
-        @Override
-        public Ticket begin(ServerLevel from, BoundingBox box) {
-            RelocationTicket ticket = Relocations.begin(from, box, MOVER);
-            CompletableFuture<Optional<String>> begun = ticket.begun().handle((result, error) -> {
-                if (error != null) {
-                    return Optional.of("zas_relocation_failed");
-                }
-                return result.outcome() == RelocationOutcome.BEGUN
-                        ? Optional.empty()
-                        : Optional.of(
-                                "zas_relocation_" + result.outcome().name().toLowerCase(Locale.ROOT));
-            });
-            return new Ticket() {
-                @Override
-                public CompletableFuture<Optional<String>> begun() {
-                    return begun;
-                }
-
-                @Override
-                public void complete(ServerLevel to, Vec3i offset) {
-                    completed = Relocations.complete(ticket, Destination.offset(to, offset));
-                }
-
-                @Override
-                public void cancel() {
-                    Relocations.cancel(ticket);
-                }
-            };
         }
     }
 
