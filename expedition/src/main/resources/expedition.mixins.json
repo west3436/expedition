@@ -5,7 +5,12 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ChunkGeneratorStructureStateAccessor",
-    "ChunkMapMixin"
+    "ChunkMapMixin",
+    "ChunkStatusTasksMixin",
+    "DelegateBorderChangeListenerAccessor",
+    "PlayerListBorderListenerMixin",
+    "PlayerListMixin",
+    "WorldBorderAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

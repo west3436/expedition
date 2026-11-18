@@ -1,0 +1,22 @@
+{
+  "type": "expedition_test:bounded",
+  "generator": {
+    "type": "expedition:planet",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "expedition_test:generated"
+    },
+    "base_block": "minecraft:stone",
+    "surface_block": "minecraft:calcite",
+    "filler_block": {
+      "Name": "minecraft:tuff"
+    },
+    "filler_depth": 2,
+    "floor_block": "minecraft:bedrock",
+    "ground_level": 66,
+    "amplitude": 8,
+    "scale": 128,
+    "sea_level": 63,
+    "sea_block": "minecraft:water"
+  }
+}

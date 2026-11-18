@@ -1,6 +1,6 @@
 {
   "pack": {
-    "description": "Expedition GameTests: the test planets expedition_test:kepler and expedition_test:generated, and their dimensions",
+    "description": "Expedition GameTests: the test planets expedition_test:kepler, expedition_test:generated and expedition_test:bounded, and their dimensions",
     "pack_format": 48
   }
 }

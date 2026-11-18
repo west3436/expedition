@@ -17,6 +17,8 @@ import org.slf4j.Logger;
  *
  * <ul>
  *   <li>The planets load with every datapack load: as the server starts, and on {@code /reload}.
+ *   <li>Once the server has started, bounded planets get their world borders ({@link
+ *       PlanetBorders}).
  *   <li>Once the server has started, and after every {@code /reload}, the planets are checked for
  *       what only a running server knows ({@link PlanetLoader#checkWorld}), and any warning is
  *       logged.
@@ -46,6 +48,9 @@ public final class PlanetEvents {
     }
 
     private static void onServerStarted(ServerStartedEvent event) {
+        // Every level exists now, so the borders go on before anyone joins, and before the check
+        // that reports region files past them.
+        PlanetBorders.apply(event.getServer());
         checkWorld(event.getServer());
     }
 

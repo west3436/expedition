@@ -24,7 +24,9 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
  *       makes the dimension a level on the GameTest server. It also holds {@code
  *       expedition_test:generated}, a planet whose dimension is made by {@code expedition:planet},
  *       with its biome and planet file. The biome is in vanilla's igloo and standard ruined-portal
- *       biome tags, so {@link PlanetStructureTests} has structures to filter there.
+ *       biome tags, so {@link PlanetStructureTests} has structures to filter there. Last, {@code
+ *       expedition_test:bounded}, the planet {@link TestPlanetBorders} gives a world border, made by
+ *       {@code expedition:planet} in a dimension type of its own with a coordinate scale of 8.
  * </ul>
  */
 @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
