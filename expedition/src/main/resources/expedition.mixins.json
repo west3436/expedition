@@ -9,6 +9,7 @@
     "ChunkStatusTasksMixin",
     "DelegateBorderChangeListenerAccessor",
     "EntityGravityMixin",
+    "NaturalSpawnerMixin",
     "PlayerListBorderListenerMixin",
     "PlayerListMixin",
     "WorldBorderAccessor"

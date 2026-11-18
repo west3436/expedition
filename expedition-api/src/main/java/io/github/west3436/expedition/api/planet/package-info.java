@@ -28,6 +28,9 @@
  * with no {@code partial_pressures} makes an airless surface. The keys of {@code mobs} besides
  * {@code replace_existing} are vanilla's mob categories ({@code monster}, {@code creature}, {@code
  * ambient}, {@code axolotls}, {@code underground_water_creature}, {@code water_creature}, {@code
- * water_ambient}, {@code misc}). A file may carry NeoForge's {@code neoforge:conditions}.
+ * water_ambient}, {@code misc}). Each category listed is added to what the biomes spawn in it, or
+ * with {@code replace_existing} replaces it, and a category left out keeps the biomes' spawns. A
+ * mob in the table is the planet's own: it lives in the planet's open air unharmed. A file may
+ * carry NeoForge's {@code neoforge:conditions}.
  */
 package io.github.west3436.expedition.api.planet;

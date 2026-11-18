@@ -25,6 +25,8 @@ import org.slf4j.Logger;
  *       a warning ({@link PlanetLoader#checkWorld}).
  *   <li>Each planet's atmosphere is its dimension's open air in ZAS³ ({@link PlanetAir}), from
  *       every load on.
+ *   <li>Each planet's mobs table decides what spawns there ({@link PlanetSpawns}), and its mobs
+ *       live in its open air ({@link NativeAir}).
  *   <li>A joining player is sent every planet, and every player is sent them again after a {@code
  *       /reload}.
  *   <li>A planet's gravity is put on its living entities ({@link PlanetGravityEvents}), and put on
@@ -46,6 +48,8 @@ public final class PlanetEvents {
         gameBus.addListener(PlanetEvents::onServerStarted);
         gameBus.addListener(PlanetEvents::onDatapackSync);
         gameBus.addListener(PlanetEvents::onServerStopped);
+        PlanetSpawns.register(gameBus);
+        NativeAir.register(gameBus);
         PlanetGravityEvents.register(gameBus);
     }
 
