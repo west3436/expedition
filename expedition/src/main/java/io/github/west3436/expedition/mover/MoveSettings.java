@@ -34,7 +34,11 @@ public record MoveSettings(int workPerTick, long nanosPerTick, RelocationHandove
     /** Work for carrying one entity, with its passengers. */
     public static final int ENTITY = 32;
 
-    /** Work for updating the neighbours of one position on a face of either box. */
+    /**
+     * Work for updating the neighbours of one position on the faces of both boxes. #8 measured it at
+     * about 32 units' worth; since #69 tells only the neighbours outside the boxes, it costs about
+     * as much as carrying a block, 5 to 8 units (#70).
+     */
     public static final int SETTLE = 8;
 
     /**
