@@ -1,6 +1,8 @@
 package io.github.west3436.expedition.registry;
 
 import io.github.west3436.expedition.ExpeditionMod;
+import io.github.west3436.expedition.drive.gas.GasThrusterBlock;
+import io.github.west3436.expedition.drive.gas.GasThrusterBlockEntity;
 import io.github.west3436.expedition.ship.ShuttleComputerBlock;
 import io.github.west3436.expedition.ship.ShuttleComputerBlockEntity;
 import java.util.function.Supplier;
@@ -47,6 +49,27 @@ public final class ExpeditionBlocks {
                     () -> BlockEntityType.Builder.of(ShuttleComputerBlockEntity::new, SHUTTLE_COMPUTER.get())
                             .build(null));
 
+    /** {@code expedition:gas_thruster}: the first engine, which burns ZAS³ gas. */
+    public static final DeferredBlock<GasThrusterBlock> GAS_THRUSTER = BLOCKS.register(
+            "gas_thruster",
+            () -> new GasThrusterBlock(BlockBehaviour.Properties.of()
+                    .mapColor(MapColor.METAL)
+                    .strength(5.0F, 6.0F)
+                    .requiresCorrectToolForDrops()
+                    .sound(SoundType.METAL)));
+
+    /** The gas thruster's item. */
+    public static final DeferredItem<BlockItem> GAS_THRUSTER_ITEM =
+            ITEMS.registerSimpleBlockItem(GAS_THRUSTER, new Item.Properties());
+
+    /** The gas thruster's block entity. */
+    @SuppressWarnings("DataFlowIssue") // The type's data fixer is null: the mod has none.
+    public static final Supplier<BlockEntityType<GasThrusterBlockEntity>> GAS_THRUSTER_ENTITY =
+            BLOCK_ENTITY_TYPES.register(
+                    "gas_thruster",
+                    () -> BlockEntityType.Builder.of(GasThrusterBlockEntity::new, GAS_THRUSTER.get())
+                            .build(null));
+
     private ExpeditionBlocks() {}
 
     /**
@@ -64,6 +87,7 @@ public final class ExpeditionBlocks {
     private static void onBuildTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(SHUTTLE_COMPUTER_ITEM);
+            event.accept(GAS_THRUSTER_ITEM);
         }
     }
 }
