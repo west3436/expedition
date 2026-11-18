@@ -22,8 +22,10 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  *       has changed.
  * </ol>
  *
- * <p>Each ticket is completed or cancelled exactly once. {@link #NONE} is the no-op hand-over, used
- * until Expedition calls ZAS³'s relocation (#11): its tickets begin at once and do nothing.
+ * <p>Each ticket is completed or cancelled exactly once. {@link ZasRelocationHandover} is ZAS³'s,
+ * the one {@link MoveSettings#DEFAULT} uses. {@link #NONE} is the no-op hand-over, for a move that
+ * should leave the air to ordinary block changes, as a test may: its tickets begin at once and do
+ * nothing.
  */
 @FunctionalInterface
 public interface RelocationHandover {
