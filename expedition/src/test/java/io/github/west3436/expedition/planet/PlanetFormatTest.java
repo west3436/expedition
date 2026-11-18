@@ -61,7 +61,7 @@ class PlanetFormatTest {
               "mobs": { "replace_existing": true,
                         "monster": [ { "type": "minecraft:stray", "weight": 10, "group": [1, 3] } ],
                         "creature": [ { "type": "minecraft:goat", "weight": 5 } ] },
-              "structures": { "allow": ["#mypack:kepler_ruins", "minecraft:igloo"], "deny": ["#minecraft:village"] },
+              "structures": { "allow": ["#mypack:kepler_ruins", "minecraft:igloo"], "deny": ["mypack:kepler_tower"] },
               "access": { "hidden_until_scanned": true }
             }
             """;
@@ -152,7 +152,7 @@ class PlanetFormatTest {
                         List.of(
                                 new StructureRef(id("mypack", "kepler_ruins"), true),
                                 new StructureRef(mc("igloo"), false)),
-                        List.of(new StructureRef(mc("village"), true))),
+                        List.of(new StructureRef(id("mypack", "kepler_tower"), false))),
                 planet.structures());
         assertTrue(planet.access().hiddenUntilScanned());
     }

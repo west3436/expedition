@@ -65,6 +65,7 @@ public final class PlanetEvents {
     private static void onServerStopped(ServerStoppedEvent event) {
         PlanetRegistry.setServer(PlanetLoader.Result.EMPTY);
         PlanetAir.clear();
+        StructureFilter.clearApplied();
     }
 
     /**

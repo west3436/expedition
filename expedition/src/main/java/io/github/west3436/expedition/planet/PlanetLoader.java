@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.DynamicOps;
 import io.github.west3436.expedition.api.planet.Planet;
+import io.github.west3436.expedition.api.planet.PlanetStructures;
 import io.github.west3436.expedition.api.planet.StructureRef;
 import io.github.west3436.expedition.planet.PlanetProblem.Severity;
 import io.github.west3436.zas.api.ZasApi;
@@ -21,17 +22,13 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.levelgen.structure.Structure;
 import net.neoforged.neoforge.common.conditions.ICondition;
 
 /**
@@ -318,8 +315,9 @@ public final class PlanetLoader {
 
     /**
      * Checks what loaded planets name that only a running server knows: that each dimension is one
-     * of its levels, and each structure and tag one its datapacks give. These are warnings: the
-     * planet still loads.
+     * of its levels, and each structure, structure set and tag one its datapacks give. Also that its
+     * structure lists are the ones its level was built with: they change only at the next start.
+     * These are warnings: the planet still loads. Gases are {@link #checkGases}'s, and errors.
      *
      * @param result the planets
      * @param server the server
@@ -327,7 +325,7 @@ public final class PlanetLoader {
      */
     public static List<PlanetProblem> checkWorld(Result result, MinecraftServer server) {
         List<PlanetProblem> problems = new ArrayList<>();
-        Registry<Structure> structures = server.registryAccess().registryOrThrow(Registries.STRUCTURE);
+        StructureRules.Lookup structures = StructureFilter.lookup(server.registryAccess());
         for (Planet planet : result.planets().values()) {
             String file = result.files().get(planet.id());
             ResourceKey<Level> dimension = planet.dimension();
@@ -342,6 +340,11 @@ public final class PlanetLoader {
                     problems, file, "structures.allow", planet.structures().allow(), structures);
             checkStructures(
                     problems, file, "structures.deny", planet.structures().deny(), structures);
+            // A level's structure lists apply when it is built, so a /reload can't change them.
+            Optional<PlanetStructures> applied = StructureFilter.applied(dimension);
+            if (applied.isPresent() && !applied.get().equals(planet.structures())) {
+                problems.add(warning(file, "structures", "structures_at_next_start"));
+            }
         }
         return problems;
     }
@@ -351,17 +354,12 @@ public final class PlanetLoader {
             String file,
             String field,
             List<StructureRef> refs,
-            Registry<Structure> structures) {
+            StructureRules.Lookup structures) {
         for (int i = 0; i < refs.size(); i++) {
             StructureRef ref = refs.get(i);
-            if (ref.tag()) {
-                if (structures
-                        .getTag(TagKey.create(Registries.STRUCTURE, ref.id()))
-                        .isEmpty()) {
-                    problems.add(warning(file, field + "[" + i + "]", "unknown_structure_tag", ref.toString()));
-                }
-            } else if (!structures.containsKey(ref.id())) {
-                problems.add(warning(file, field + "[" + i + "]", "unknown_structure", ref.toString()));
+            if (!StructureRules.exists(ref, structures)) {
+                String key = ref.tag() ? "unknown_structure_tag" : "unknown_structure";
+                problems.add(warning(file, field + "[" + i + "]", key, ref.toString()));
             }
         }
     }
