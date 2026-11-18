@@ -62,5 +62,6 @@
 # leave it out.
 #
 # Run the check locally with: python scripts/check_credits.py
-#
-# There are no asset files yet, so there are no entries.
+
+path: expedition/src/main/resources/assets/expedition/lang/en_us.json
+origin: original
