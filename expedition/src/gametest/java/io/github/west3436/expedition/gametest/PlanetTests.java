@@ -161,8 +161,9 @@ public final class PlanetTests {
         h.assertValueEqual(ran, 1, "the command's result");
         TranslatableContents summary = chat.first("expedition.command.planet.validate.summary");
         h.assertTrue(summary != null, "no summary: " + chat.messages);
-        // Files read, planets that would load, files that wouldn't, warnings.
-        h.assertValueEqual(List.of(summary.getArgs()), List.<Object>of(1, 1, 0L, 0L), "the summary");
+        // Files read, planets that would load, files that wouldn't, warnings. The test pack has two
+        // planets: kepler, and generated, whose dimension expedition:planet makes (PlanetGeneratorTests).
+        h.assertValueEqual(List.of(summary.getArgs()), List.<Object>of(2, 2, 0L, 0L), "the summary");
         h.assertValueEqual(chat.messages.size(), 1, "the messages besides the summary: " + chat.messages);
         h.succeed();
     }
