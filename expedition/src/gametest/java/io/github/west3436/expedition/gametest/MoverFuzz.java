@@ -362,13 +362,20 @@ final class MoverFuzz {
             }
         }
 
-        /** Holds the slots' chunks, and says whether they and their entities have all loaded. */
+        /**
+         * Holds the slots' chunks, and says whether they and their entities have all loaded. They are
+         * force-loaded too: a level with no player and no forced chunk stops ticking its entities and
+         * block entities 300 ticks after it empties, and region tickets don't count. Only the
+         * Overworld has the GameTest grid's forced chunks, and the ship has to tick in the Nether
+         * too, to settle and to sit out its last dwell.
+         */
         boolean load() {
             boolean loaded = true;
             for (Map.Entry<ServerLevel, Set<ChunkPos>> e : held.entrySet()) {
                 ServerLevel level = e.getKey();
                 for (ChunkPos c : e.getValue()) {
                     level.getChunkSource().addRegionTicket(HELD, c, 2, c);
+                    level.setChunkForced(c.x, c.z, true);
                     level.getChunk(c.x, c.z);
                     loaded &= level.areEntitiesLoaded(c.toLong());
                 }
@@ -380,6 +387,7 @@ final class MoverFuzz {
             held.forEach((level, chunks) -> {
                 for (ChunkPos c : chunks) {
                     level.getChunkSource().removeRegionTicket(HELD, c, 2, c);
+                    level.setChunkForced(c.x, c.z, false);
                 }
             });
         }
