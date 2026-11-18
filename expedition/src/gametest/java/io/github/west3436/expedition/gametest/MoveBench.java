@@ -6,6 +6,7 @@ import io.github.west3436.expedition.mover.MoveRequest;
 import io.github.west3436.expedition.mover.MoveResult;
 import io.github.west3436.expedition.mover.MoveSettings;
 import io.github.west3436.expedition.mover.QuietBlocks;
+import io.github.west3436.expedition.mover.ShipCeiling;
 import io.github.west3436.expedition.mover.ShipMover;
 import java.io.IOException;
 import java.lang.management.GarbageCollectorMXBean;
@@ -258,6 +259,7 @@ public final class MoveBench {
         private final int largest;
         private final List<ChunkPos> heldOverworld = new ArrayList<>();
         private final List<ChunkPos> heldNether = new ArrayList<>();
+        private final ShipCeiling ceiling;
 
         volatile boolean finished;
         volatile String failure;
@@ -287,6 +289,10 @@ public final class MoveBench {
             this.nether = nether;
             this.cases = cases(sides, reps);
             this.largest = Math.max(32, Arrays.stream(sides).max().orElse(32));
+            // The benchmark measures past the server's ceiling on a ship's box, so it lifts it while it
+            // runs and puts it back when it is done.
+            this.ceiling = ShipMover.ceiling();
+            ShipMover.setCeiling(ShipCeiling.NONE);
         }
 
         String progress() {
@@ -473,6 +479,7 @@ public final class MoveBench {
         }
 
         void release() {
+            ShipMover.setCeiling(ceiling);
             for (ChunkPos pos : heldOverworld) {
                 overworld.getChunkSource().removeRegionTicket(HELD, pos, 2, pos);
             }
