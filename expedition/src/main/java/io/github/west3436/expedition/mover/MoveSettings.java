@@ -18,7 +18,8 @@ import java.util.Objects;
  * @param workPerTick the work units all moves together may spend in one tick, at least 1
  * @param nanosPerTick the wall time all moves together may spend in one tick, at least 1
  * @param handover who else is told of each move, and may hold it until ready
- * @param checks what may refuse a move whole
+ * @param checks what else may refuse a move whole, asked after the mover's own refusals ({@link
+ *     MoveRefusal})
  */
 public record MoveSettings(int workPerTick, long nanosPerTick, RelocationHandover handover, List<MoveCheck> checks) {
     /** Work for looking at one position of the box. */

@@ -256,10 +256,10 @@ public final class MoveJob {
             refusal = ticket.begun().join();
         } catch (CompletionException | CancellationException e) {
             ShipMover.LOGGER.warn("The relocation hand-over for {} failed; the move is refused", request, e);
-            refusal = Optional.of("handover_failed");
+            refusal = Optional.of(MoveRefusal.HANDOVER_FAILED);
         }
         if (refusal.isEmpty()) {
-            refusal = ShipMover.firstRefusal(request, settings);
+            refusal = ShipMover.firstRefusal(request, settings, this);
         }
         if (refusal.isPresent()) {
             refuse(refusal.get());
@@ -303,7 +303,8 @@ public final class MoveJob {
         QuietBlocks.moveTicks(from, pos, state, to, offset);
         QuietBlocks.set(from, source, pos, Blocks.AIR.defaultBlockState());
         if (replaced.hasBlockEntity()) {
-            // An occupied destination is #6's refusal; until then the mover writes over it.
+            // Only a replaceable block, such as a snow layer, was here when the move began: the checks
+            // refused anything else. It is written over, without drops.
             target.removeBlockEntity(there);
         }
         QuietBlocks.set(to, target, there, state);

@@ -3,6 +3,7 @@ package io.github.west3436.expedition.mover;
 import com.mojang.logging.LogUtils;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
@@ -29,9 +30,12 @@ import org.slf4j.Logger;
  * together no more than the server's budget, {@link #SERVER_WORK_PER_TICK} work units and {@link
  * #SERVER_NANOS_PER_TICK} of wall time, so many moves at once cost a tick no more than one.
  *
- * <p>Before a move starts, its chunks at both ends, and a block beyond, must be loaded, and the
- * entities of the boxes' own chunks too, and it must not overlap a move in progress. These are the
- * caller's to check; #6 makes them refusals.
+ * <p>A move that can't be honoured is refused whole, with a stable code ({@link MoveRefusal}), and
+ * changes nothing at either end: a box over the server's {@link #ceiling()}, an overlap with a move in
+ * progress, a chunk at either end (or a block beyond) or the entities of a box's chunks not loaded, a
+ * block in the {@link ExpeditionTags#IMMOVABLE immovable} tag in the box, or something in the way at
+ * the destination. A move never destroys a block: only air and replaceable blocks, such as grass and
+ * snow layers, are written over. {@link #dryRun} lists every obstacle without moving anything.
  *
  * <p>Thread: server thread only.
  */
@@ -48,6 +52,7 @@ public final class ShipMover {
     private static long nextId = 1;
     private static int budgetTick = Integer.MIN_VALUE;
     private static TickBudget budget;
+    private static ShipCeiling ceiling = ShipCeiling.NONE;
 
     private ShipMover() {}
 
@@ -68,35 +73,30 @@ public final class ShipMover {
      * @return the move
      * @throws IllegalArgumentException if the move goes nowhere, or a box leaves its level's build
      *     height
-     * @throws IllegalStateException if a chunk or its entities at either end aren't loaded, or the
-     *     move overlaps one in progress
+     * @throws IllegalStateException if called off the server thread
      */
     public static MoveJob start(MoveRequest request) {
         return start(request, MoveSettings.DEFAULT);
     }
 
     /**
-     * Starts a move. The checks are asked first: a refusal returns a job that is already done, with
-     * nothing changed and no hand-over begun. Otherwise the hand-over begins, and as much of the move
-     * as this tick's budget allows is done before this returns.
+     * Starts a move. The mover's own checks and then the settings' are asked first: a refusal
+     * returns a job that is already done, with nothing changed and no hand-over begun. Otherwise the
+     * hand-over begins, and as much of the move as this tick's budget allows is done before this
+     * returns.
      *
      * @param request what to move, and where
      * @param settings the budget, the hand-over and the checks
      * @return the move
      * @throws IllegalArgumentException if the move goes nowhere, or a box leaves its level's build
      *     height
-     * @throws IllegalStateException if a chunk or its entities at either end aren't loaded, or the
-     *     move overlaps one in progress
+     * @throws IllegalStateException if called off the server thread
      */
     public static MoveJob start(MoveRequest request, MoveSettings settings) {
         MinecraftServer server = request.from().getServer();
-        if (!server.isSameThread()) {
-            throw new IllegalStateException("ShipMover.start off the server thread");
-        }
-        Optional<String> refusal = firstRefusal(request, settings);
-        if (refusal.isEmpty()) {
-            requireMovable(request);
-        }
+        requireServerThread(server, "start");
+        requireMovable(request);
+        Optional<String> refusal = firstRefusal(request, settings, null);
         MoveJob job = new MoveJob(nextId++, request, settings);
         if (refusal.isPresent()) {
             job.refuse(refusal.get());
@@ -136,15 +136,66 @@ public final class ShipMover {
         return List.copyOf(JOBS);
     }
 
-    /** The first refusal any check gives, or empty. */
-    static Optional<String> firstRefusal(MoveRequest request, MoveSettings settings) {
-        for (MoveCheck check : settings.checks()) {
-            Optional<String> refusal = check.check(request);
-            if (refusal.isPresent()) {
-                return refusal;
-            }
-        }
-        return Optional.empty();
+    /**
+     * A dry run of a move with the default settings: see {@link #dryRun(MoveRequest, MoveSettings)}.
+     *
+     * @param request what to move, and where
+     * @return every obstacle, empty if the move would go ahead
+     * @throws IllegalArgumentException if the move goes nowhere, or a box leaves its level's build
+     *     height
+     * @throws IllegalStateException if called off the server thread
+     */
+    public static DryRun dryRun(MoveRequest request) {
+        return dryRun(request, MoveSettings.DEFAULT);
+    }
+
+    /**
+     * Asks every check {@link #start} would, and lists everything that would refuse the move: each
+     * block and entity in the way, each immovable block, each chunk not loaded. It changes nothing,
+     * loads no chunk and begins no hand-over. Its first obstacle's code is the refusal {@link #start}
+     * would give now; the move may still be refused later, if the world changes before it starts.
+     *
+     * @param request what to move, and where
+     * @param settings the settings whose checks are asked after the mover's own
+     * @return every obstacle, empty if the move would go ahead
+     * @throws IllegalArgumentException if the move goes nowhere, or a box leaves its level's build
+     *     height
+     * @throws IllegalStateException if called off the server thread
+     */
+    public static DryRun dryRun(MoveRequest request, MoveSettings settings) {
+        requireServerThread(request.from().getServer(), "dryRun");
+        requireMovable(request);
+        return new DryRun(ObstacleScan.find(request, settings, JOBS, null, true));
+    }
+
+    /**
+     * The server's ceiling on a ship's box.
+     *
+     * @return the ceiling; {@link ShipCeiling#NONE} until one is set
+     */
+    public static ShipCeiling ceiling() {
+        return ceiling;
+    }
+
+    /**
+     * Sets the server's ceiling on a ship's box, which every move from now on is checked against: the
+     * hook for the server setting of #9.
+     *
+     * @param ceiling the ceiling, or {@link ShipCeiling#NONE}
+     */
+    public static void setCeiling(ShipCeiling ceiling) {
+        ShipMover.ceiling = Objects.requireNonNull(ceiling, "ceiling");
+    }
+
+    /**
+     * The first refusal of the mover's own checks or the settings', or empty.
+     *
+     * @param self the job being checked again once its hand-over is ready, so it doesn't count as a
+     *     move it overlaps; null when the move is starting
+     */
+    static Optional<String> firstRefusal(MoveRequest request, MoveSettings settings, MoveJob self) {
+        List<Obstacle> first = ObstacleScan.find(request, settings, JOBS, self, false);
+        return first.isEmpty() ? Optional.empty() : Optional.of(first.get(0).code());
     }
 
     /** The chunks a box spans, and those a block beyond it. */
@@ -158,7 +209,13 @@ public final class ShipMover {
         return chunks;
     }
 
-    /** Throws if the mover can't carry out a request at all. */
+    private static void requireServerThread(MinecraftServer server, String what) {
+        if (!server.isSameThread()) {
+            throw new IllegalStateException("ShipMover." + what + " off the server thread");
+        }
+    }
+
+    /** Throws if the request makes no sense: no world could let it go ahead. */
     private static void requireMovable(MoveRequest request) {
         Vec3i offset = request.offset();
         if (request.sameLevel() && offset.equals(Vec3i.ZERO)) {
@@ -166,37 +223,12 @@ public final class ShipMover {
         }
         requireInside(request.from(), request.box());
         requireInside(request.to(), request.destination());
-        requireLoaded(request.from(), request.box());
-        requireLoaded(request.to(), request.destination());
-        for (MoveJob job : JOBS) {
-            if (job.overlaps(request.from(), request.box()) || job.overlaps(request.to(), request.destination())) {
-                throw new IllegalStateException(request + " overlaps " + job);
-            }
-        }
     }
 
     private static void requireInside(ServerLevel level, BoundingBox box) {
         if (level.isOutsideBuildHeight(box.minY()) || level.isOutsideBuildHeight(box.maxY())) {
             throw new IllegalArgumentException(
                     box + " leaves the build height of " + level.dimension().location());
-        }
-    }
-
-    private static void requireLoaded(ServerLevel level, BoundingBox box) {
-        for (ChunkPos pos : chunks(box)) {
-            if (!level.hasChunk(pos.x, pos.z)) {
-                throw new IllegalStateException(
-                        "chunk " + pos + " of " + level.dimension().location() + " isn't loaded, for a move of " + box);
-            }
-        }
-        // A chunk's entities load after its blocks; a move before then would leave them behind.
-        for (int x = box.minX() >> 4; x <= box.maxX() >> 4; x++) {
-            for (int z = box.minZ() >> 4; z <= box.maxZ() >> 4; z++) {
-                if (!level.areEntitiesLoaded(ChunkPos.asLong(x, z))) {
-                    throw new IllegalStateException("the entities of chunk [" + x + ", " + z + "] of "
-                            + level.dimension().location() + " aren't loaded, for a move of " + box);
-                }
-            }
         }
     }
 
@@ -230,7 +262,7 @@ public final class ShipMover {
         int tick = event.getServer().getTickCount();
         for (MoveJob job : List.copyOf(JOBS)) {
             if (job.waiting()) {
-                job.refuse("server_stopping");
+                job.refuse(MoveRefusal.SERVER_STOPPING);
                 JOBS.remove(job);
                 continue;
             }

@@ -123,6 +123,8 @@ public final class MoverTests {
                     hold(h, nether, box(c));
                 })
                 .thenExecute(() -> {
+                    // The Nether is netherrack at y 64, and a move never writes over a solid block.
+                    wipe(nether, box(c));
                     run.pig = build(overworld, a);
                     ShipSurvey survey = ShipSurvey.of(overworld, box(a));
                     h.assertTrue(survey.equals(new ShipSurvey(MASS, BLOCKS, 2)), "the survey says " + survey);

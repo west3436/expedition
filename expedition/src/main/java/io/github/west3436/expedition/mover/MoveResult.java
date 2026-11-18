@@ -7,7 +7,7 @@ import java.util.Optional;
  * How a move ended, with what it carried and what it cost.
  *
  * @param refusal empty if the box moved; otherwise the stable code of the check or hand-over that
- *     refused it, in which case nothing changed and every count is 0
+ *     refused it ({@link MoveRefusal}), in which case nothing changed and every count is 0
  * @param mass the ship's mass: the solid blocks moved, as {@link ShipSurvey#isSolid} counts them
  * @param blocks the blocks moved that aren't air, solid or not
  * @param blockEntities the block entities moved, with their saved state
