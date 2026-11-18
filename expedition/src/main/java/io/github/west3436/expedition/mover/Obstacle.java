@@ -74,7 +74,8 @@ public sealed interface Obstacle {
     }
 
     /**
-     * A chunk that isn't loaded, or whose entities aren't ({@link MoveRefusal#UNLOADED}).
+     * A chunk that isn't loaded, or whose entities aren't ({@link MoveRefusal#UNLOADED}), or where
+     * the player who started the move may not build ({@link MoveRefusal#CLAIMED}).
      *
      * @param code why
      * @param level the level it is in

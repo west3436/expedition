@@ -75,6 +75,7 @@
   "expedition.move.refusal.atmos_unloaded": "Part of the air inside isn't loaded.",
   "expedition.move.refusal.blocked": "Something is in the way at the destination.",
   "expedition.move.refusal.busy": "Part of this space is already being moved.",
+  "expedition.move.refusal.claimed": "You may not build on part of the land the ship leaves or lands on: it is protected or claimed.",
   "expedition.move.refusal.handover_failed": "The move couldn't be handed over to the atmosphere simulation.",
   "expedition.move.refusal.hop_too_large": "The ship is too large for a hop onto its own space on this server. Move it further, clear of itself.",
   "expedition.move.refusal.immovable": "The ship holds a block that can't be moved.",
