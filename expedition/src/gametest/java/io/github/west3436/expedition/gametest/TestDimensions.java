@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import javax.annotation.Nullable;
 import net.minecraft.Util;
 import net.minecraft.core.registries.Registries;
@@ -39,11 +40,12 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import org.slf4j.Logger;
 
 /**
- * Makes the test datapacks' dimensions levels on the GameTest server.
+ * Makes the test datapacks' dimensions, and the mod's own, levels on the GameTest server.
  *
  * <p>A real server makes a level of every dimension its datapacks hold, but vanilla's GameTest
  * server builds its world from the flat preset alone and drops datapack dimensions. So before the
- * tests start, this reads each {@code data/expedition_test/dimension/*.json} the way a real server
+ * tests start, this reads each {@code data/expedition_test/dimension/*.json}, and each of the mod's
+ * own {@code data/expedition/dimension/*.json} such as Space, the way a real server
  * would and adds a level for it, as the server's own {@code createLevels} adds the Nether: with the
  * Overworld's seed, its level data and random sequences, and a world border that follows the
  * Overworld's. Tests then reach it with {@code server.getLevel}, as any other level.
@@ -77,8 +79,10 @@ public final class TestDimensions {
             return;
         }
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, server.registryAccess());
-        Map<ResourceLocation, Resource> files =
-                DIMENSIONS.listMatchingResourcesFromNamespace(server.getResourceManager(), NAMESPACE);
+        Map<ResourceLocation, Resource> files = new TreeMap<>();
+        for (String namespace : List.of(ExpeditionMod.MOD_ID, NAMESPACE)) {
+            files.putAll(DIMENSIONS.listMatchingResourcesFromNamespace(server.getResourceManager(), namespace));
+        }
         for (Map.Entry<ResourceLocation, Resource> file : files.entrySet()) {
             ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, DIMENSIONS.fileToId(file.getKey()));
             if (server.getLevel(key) != null) {

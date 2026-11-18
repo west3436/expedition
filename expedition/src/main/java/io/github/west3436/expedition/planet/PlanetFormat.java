@@ -14,6 +14,7 @@ import io.github.west3436.expedition.api.planet.PlanetStructures;
 import io.github.west3436.expedition.api.planet.PlanetSurface;
 import io.github.west3436.expedition.api.planet.SpaceSquare;
 import io.github.west3436.expedition.api.planet.StructureRef;
+import io.github.west3436.expedition.api.space.Space;
 import io.github.west3436.expedition.planet.PlanetProblem.Severity;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -48,6 +49,9 @@ public final class PlanetFormat {
 
     /** NeoForge's load conditions, which a file may carry at its top. */
     public static final String CONDITIONS = "neoforge:conditions";
+
+    /** Expedition's own dimensions, which hold ships and planets' squares and are never planets. */
+    public static final Set<ResourceLocation> RESERVED = Set.of(Space.DIMENSION.location());
 
     private PlanetFormat() {}
 
@@ -206,6 +210,9 @@ public final class PlanetFormat {
             }
             int before = problems.size();
             ResourceLocation dimension = root.required("dimension", this::id);
+            if (dimension != null && RESERVED.contains(dimension)) {
+                error("dimension", "reserved_dimension", dimension.toString());
+            }
             SpaceSquare space = root.required("space", this::space);
             PlanetSurface surface = root.optional("surface", this::surface, PlanetSurface.DEFAULT);
             Optional<PlanetAtmosphere> atmosphere =

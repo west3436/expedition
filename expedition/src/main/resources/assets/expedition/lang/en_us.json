@@ -75,6 +75,7 @@
   "expedition.planet.problem.overlap": "the square in Space overlaps the square of %s, in %s. Neither planet loads",
   "expedition.planet.problem.parent_loop": "the parents go round in a loop: %s",
   "expedition.planet.problem.regions_past_border": "%s region files of %s lie wholly more than %s blocks past the world border. The chunks already in them stay as they are; only chunks generated from now on are left empty",
+  "expedition.planet.problem.reserved_dimension": "%s is one of Expedition's own dimensions, which can't be a planet",
   "expedition.planet.problem.same_dimension": "%s is also the dimension of %s. Neither planet loads",
   "expedition.planet.problem.space_outside": "the square reaches past the edge of Space, ±%s",
   "expedition.planet.problem.structures_at_next_start": "differs from the lists this planet's level was built with. Structure lists apply when the server starts, so these take effect at the next start",
