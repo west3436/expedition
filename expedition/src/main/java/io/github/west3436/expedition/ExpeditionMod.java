@@ -2,6 +2,7 @@ package io.github.west3436.expedition;
 
 import com.mojang.logging.LogUtils;
 import io.github.west3436.expedition.api.ExpeditionApi;
+import io.github.west3436.expedition.command.MoveCommand;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.zas.api.ZasApi;
 import net.neoforged.bus.api.IEventBus;
@@ -24,6 +25,7 @@ public final class ExpeditionMod {
     public ExpeditionMod(IEventBus modBus) {
         modBus.addListener(ExpeditionMod::onCommonSetup);
         ShipMover.register(NeoForge.EVENT_BUS);
+        MoveCommand.register(NeoForge.EVENT_BUS);
     }
 
     private static void onCommonSetup(FMLCommonSetupEvent event) {
