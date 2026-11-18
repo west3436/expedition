@@ -6,7 +6,9 @@ import io.github.west3436.expedition.command.MoveCommand;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.zas.api.ZasApi;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
@@ -22,8 +24,10 @@ public final class ExpeditionMod {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public ExpeditionMod(IEventBus modBus) {
+    public ExpeditionMod(IEventBus modBus, ModContainer container) {
+        container.registerConfig(ModConfig.Type.SERVER, ExpeditionConfig.SPEC);
         modBus.addListener(ExpeditionMod::onCommonSetup);
+        ShipMover.setCeiling(ExpeditionConfig.CEILING);
         ShipMover.register(NeoForge.EVENT_BUS);
         MoveCommand.register(NeoForge.EVENT_BUS);
     }
