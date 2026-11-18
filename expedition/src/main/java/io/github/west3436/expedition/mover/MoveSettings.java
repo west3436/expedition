@@ -1,7 +1,10 @@
 package io.github.west3436.expedition.mover;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * How a move runs: how much work it may do in one server tick, who is told of it, and what may
@@ -84,6 +87,23 @@ public record MoveSettings(int workPerTick, long nanosPerTick, RelocationHandove
      */
     public MoveSettings withHandover(RelocationHandover handover) {
         return new MoveSettings(workPerTick, nanosPerTick, handover, checks);
+    }
+
+    /**
+     * These settings for a move a player started: with a {@link ClaimCheck} for them added to the
+     * checks, so the move is refused with {@link MoveRefusal#CLAIMED} where they may not build. A
+     * move with no player, such as one from the console, has no such check.
+     *
+     * @param player who started the move, or null if no player did
+     * @return the settings, or these settings if {@code player} is null
+     */
+    public MoveSettings startedBy(@Nullable ServerPlayer player) {
+        if (player == null) {
+            return this;
+        }
+        List<MoveCheck> withClaims = new ArrayList<>(checks);
+        withClaims.add(new ClaimCheck(player));
+        return withChecks(withClaims);
     }
 
     /**

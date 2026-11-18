@@ -49,6 +49,14 @@ public final class MoveRefusal {
      */
     public static final String OUTSIDE_BORDER = "outside_border";
 
+    /**
+     * The player who started the move may not build on part of the land at one end or the other:
+     * spawn protection, or a claim another mod keeps ({@link ClaimCheck}). It is a check of {@link
+     * MoveSettings#checks()}, asked after the mover's own, and only for a move a player started
+     * ({@link MoveSettings#startedBy}). A dry run lists each chunk.
+     */
+    public static final String CLAIMED = "claimed";
+
     /** The relocation hand-over threw instead of beginning. */
     public static final String HANDOVER_FAILED = "handover_failed";
 
