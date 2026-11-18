@@ -166,6 +166,17 @@ if (compatMatrix) {
     }
 }
 
+// The move benchmark (#8): -Pbench=true runs only the GameTests of the expedition_bench namespace,
+// which no other run enables, so the benchmark never slows CI's GameTests. -Pbench.reps=<n> runs
+// each case n times (3), and -Pbench.sides=8,16 picks the boxes' sides (8,16,32,64). The Move
+// benchmark workflow runs it on a CI runner.
+def bench = providers.gradleProperty('bench').getOrElse('false').toBoolean()
+if (bench) {
+    neoForge.runs.gameTestServer.systemProperty 'neoforge.enabledGameTestNamespaces', 'expedition_bench'
+    neoForge.runs.gameTestServer.systemProperty 'expedition.bench.reps', providers.gradleProperty('bench.reps').getOrElse('3')
+    neoForge.runs.gameTestServer.systemProperty 'expedition.bench.sides', providers.gradleProperty('bench.sides').getOrElse('8,16,32,64')
+}
+
 dependencies {
     implementation project(':expedition-api')
 
