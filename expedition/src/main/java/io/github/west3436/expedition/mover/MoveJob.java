@@ -321,6 +321,10 @@ public final class MoveJob {
         }
         budget.spend(MoveSettings.BLOCK);
         CompoundTag saved = state.hasBlockEntity() ? QuietBlocks.takeBlockEntity(from, source, pos) : null;
+        // DELIBERATELY BROKEN, to show the fuzz fails: every fifth block entity arrives empty.
+        if (saved != null && blockEntities % 5 == 2) {
+            saved = null;
+        }
         QuietBlocks.moveTicks(from, pos, state, to, offset);
         QuietBlocks.set(from, source, pos, Blocks.AIR.defaultBlockState());
         if (replaced.hasBlockEntity()) {
