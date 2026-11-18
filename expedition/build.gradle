@@ -48,6 +48,17 @@ repositories {
     }
 }
 
+// Unit tests of the mod's pure logic, such as the order the mover walks a box in. Minecraft's
+// classes are on the test classpath, but the game is never bootstrapped; anything in the world gets
+// a GameTest instead.
+neoForge {
+    addModdingDependenciesTo(sourceSets.test)
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
 configurations {
     // Mods that dev runs and GameTests load. Never published and never put in the jar.
     localRuntime
@@ -157,6 +168,10 @@ if (compatMatrix) {
 
 dependencies {
     implementation project(':expedition-api')
+
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // ZAS³'s API, from Maven Central, to compile against only. At run time the API is the copy the
     // ZAS³ jar nests, and a second copy on the classpath would be a second module of the same name.
