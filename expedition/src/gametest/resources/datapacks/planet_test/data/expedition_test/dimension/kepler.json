@@ -11,7 +11,7 @@
         { "block": "minecraft:stone", "height": 124 },
         { "block": "minecraft:gravel", "height": 3 }
       ],
-      "structure_overrides": []
+      "structure_overrides": ["minecraft:igloos", "minecraft:villages", "minecraft:mineshafts"]
     }
   }
 }

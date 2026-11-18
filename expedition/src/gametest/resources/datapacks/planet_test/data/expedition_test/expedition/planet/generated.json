@@ -1,4 +1,5 @@
 {
   "dimension": "expedition_test:generated",
-  "space": { "center": [-12000, 4000], "size": 2048 }
+  "space": { "center": [-12000, 4000], "size": 2048 },
+  "structures": { "deny": ["minecraft:igloo"] }
 }

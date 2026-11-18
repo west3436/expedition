@@ -13,6 +13,9 @@ Planetary exploration built on ZAS³'s atmospherics: shuttles, a Space dimension
 and planets defined in datapacks. In early development.
 '''
 
+[[mixins]]
+config = "expedition.mixins.json"
+
 [[dependencies.expedition]]
 modId = "neoforge"
 type = "required"
