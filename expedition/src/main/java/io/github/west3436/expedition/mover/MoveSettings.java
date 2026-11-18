@@ -37,9 +37,12 @@ public record MoveSettings(int workPerTick, long nanosPerTick, RelocationHandove
     /** Work for updating the neighbours of one position on a face of either box. */
     public static final int SETTLE = 8;
 
-    /** 32,768 units and 10 ms a tick, a fifth of a tick's 50 ms; no hand-over and no checks. */
+    /**
+     * 32,768 units and 10 ms a tick, a fifth of a tick's 50 ms; ZAS³'s hand-over ({@link
+     * ZasRelocationHandover}), which carries the cabin air along; and no checks.
+     */
     public static final MoveSettings DEFAULT =
-            new MoveSettings(32_768, 10_000_000L, RelocationHandover.NONE, List.of());
+            new MoveSettings(32_768, 10_000_000L, ZasRelocationHandover.INSTANCE, List.of());
 
     /**
      * Checks the arguments and copies the checks.
