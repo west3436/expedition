@@ -70,6 +70,8 @@
     "#c:ores": 1.5,
     "#c:obsidians": 3,
 
-    "expedition:gas_thruster": 3
+    "expedition:gas_thruster": 3,
+    "expedition:ship_hull": 0.5,
+    "expedition:composite_ship_hull": 0.25
   }
 }

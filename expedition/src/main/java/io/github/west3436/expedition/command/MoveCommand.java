@@ -12,6 +12,8 @@ import io.github.west3436.expedition.mover.MoveResult;
 import io.github.west3436.expedition.mover.Obstacle;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.mover.ShipSurvey;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -157,7 +159,7 @@ public final class MoveCommand {
             ShipSurvey survey = ShipSurvey.of(request.from(), request.box());
             source.sendSuccess(
                     () -> Component.translatable(
-                            KEY + "dry_run.clear", survey.blocks(), survey.blockEntities(), survey.mass()),
+                            KEY + "dry_run.clear", survey.blocks(), survey.blockEntities(), mass(survey.mass())),
                     false);
             return 1;
         }
@@ -182,7 +184,7 @@ public final class MoveCommand {
                             result.blocks(),
                             result.blockEntities(),
                             result.entities(),
-                            result.mass(),
+                            mass(result.mass()),
                             result.ticks(),
                             String.format(Locale.ROOT, "%.1f", result.nanos() / 1e6)),
                     true);
@@ -255,6 +257,14 @@ public final class MoveCommand {
     }
 
     /** A block position as vanilla shows one: in green brackets, a click away from a teleport there. */
+    /** A ship's mass for a message: to two places at most, without trailing zeros (9.5, not 9.50). */
+    private static String mass(double mass) {
+        return BigDecimal.valueOf(mass)
+                .setScale(2, RoundingMode.HALF_UP)
+                .stripTrailingZeros()
+                .toPlainString();
+    }
+
     private static Component position(ResourceKey<Level> level, BlockPos pos) {
         return teleport(
                 Component.translatable("chat.coordinates", pos.getX(), pos.getY(), pos.getZ()),

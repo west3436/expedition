@@ -1,5 +1,6 @@
 package io.github.west3436.expedition.mover;
 
+import io.github.west3436.expedition.ship.BlockWeights;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
@@ -8,15 +9,14 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
 /**
  * What a box holds, counted without changing anything: its mass and what a move of it would carry.
  *
- * @param mass the solid blocks, as {@link #isSolid} counts them: a ship's mass
+ * @param mass the ship's mass: what its blocks weigh, as {@link BlockWeights#weight} gives it
  * @param blocks the blocks that aren't air, solid or not
  * @param blockEntities the block entities
  */
-public record ShipSurvey(int mass, int blocks, int blockEntities) {
+public record ShipSurvey(double mass, int blocks, int blockEntities) {
     /**
-     * Whether a block counts toward a ship's mass. Air doesn't, and nor does anything a placed block
-     * replaces: water and lava, fire, grass, snow layers, vines and the like. Everything else does,
-     * one each, whatever it is made of.
+     * Whether a block is solid: not air, and not anything a placed block replaces, such as water
+     * and lava, fire, grass, snow layers or vines. A move never writes over a solid block.
      *
      * @param state the block
      * @return true if it is solid
@@ -36,7 +36,7 @@ public record ShipSurvey(int mass, int blocks, int blockEntities) {
      * @return the counts
      */
     public static ShipSurvey of(ServerLevel level, BoundingBox box) {
-        int mass = 0;
+        double mass = 0;
         int blocks = 0;
         int blockEntities = 0;
         for (BlockPos pos :
@@ -46,9 +46,7 @@ public record ShipSurvey(int mass, int blocks, int blockEntities) {
                 continue;
             }
             blocks++;
-            if (isSolid(state)) {
-                mass++;
-            }
+            mass += BlockWeights.weight(state);
             if (state.hasBlockEntity() && level.getBlockEntity(pos) != null) {
                 blockEntities++;
             }

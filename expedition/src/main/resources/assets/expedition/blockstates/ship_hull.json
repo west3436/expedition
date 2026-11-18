@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "expedition:block/ship_hull"
+    }
+  }
+}

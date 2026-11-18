@@ -7,7 +7,7 @@ import io.github.west3436.expedition.mover.MoveResult;
 import io.github.west3436.expedition.mover.MoveSettings;
 import io.github.west3436.expedition.mover.QuietBlocks;
 import io.github.west3436.expedition.mover.ShipMover;
-import io.github.west3436.expedition.mover.ShipSurvey;
+import io.github.west3436.expedition.ship.BlockWeights;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -321,8 +321,8 @@ final class MoverFuzz {
             Map<Vec3i, CompoundTag> blockEntities,
             Map<UUID, Thing> entities,
             List<String> problems) {
-        int mass() {
-            return (int) blocks.values().stream().filter(ShipSurvey::isSolid).count();
+        double mass() {
+            return blocks.values().stream().mapToDouble(BlockWeights::weight).sum();
         }
 
         int nonAir() {
@@ -707,7 +707,7 @@ final class MoverFuzz {
                     + result.blockEntities() + " block entities and " + result.entities() + " entities, and left "
                     + result.entitiesLeft() + "; the ship has " + expected.mass() + ", " + expected.nonAir() + ", "
                     + expected.blockEntities.size() + " and " + expected.entities.size();
-            if (result.mass() != expected.mass()
+            if (Math.abs(result.mass() - expected.mass()) > 1e-6
                     || result.blocks() != expected.nonAir()
                     || result.blockEntities() != expected.blockEntities.size()
                     || result.entities() != expected.entities.size()

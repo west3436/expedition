@@ -8,7 +8,8 @@ import java.util.Optional;
  *
  * @param refusal empty if the box moved; otherwise the stable code of the check or hand-over that
  *     refused it ({@link MoveRefusal}), in which case nothing changed and every count is 0
- * @param mass the ship's mass: the solid blocks moved, as {@link ShipSurvey#isSolid} counts them
+ * @param mass the ship's mass: what the blocks moved weigh, as {@link
+ *     io.github.west3436.expedition.ship.BlockWeights#weight} gives it
  * @param blocks the blocks moved that aren't air, solid or not
  * @param blockEntities the block entities moved, with their saved state
  * @param entities the entities moved, each with its passengers counted once as one
@@ -19,7 +20,7 @@ import java.util.Optional;
  */
 public record MoveResult(
         Optional<String> refusal,
-        int mass,
+        double mass,
         int blocks,
         int blockEntities,
         int entities,

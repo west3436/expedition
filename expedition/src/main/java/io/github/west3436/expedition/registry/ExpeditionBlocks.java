@@ -10,6 +10,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -70,7 +71,34 @@ public final class ExpeditionBlocks {
                     () -> BlockEntityType.Builder.of(GasThrusterBlockEntity::new, GAS_THRUSTER.get())
                             .build(null));
 
+    /**
+     * {@code expedition:ship_hull}: a hull plate that weighs half a block toward a ship's mass and,
+     * like ZAS³'s station wall, conducts no heat. Both come from data: the block weights file and
+     * {@code data/expedition/zas/thermal/ship_hull.json}.
+     */
+    public static final DeferredBlock<Block> SHIP_HULL = BLOCKS.registerSimpleBlock("ship_hull", hull());
+
+    /** The Ship Hull's item. */
+    public static final DeferredItem<BlockItem> SHIP_HULL_ITEM = ITEMS.registerSimpleBlockItem(SHIP_HULL);
+
+    /** {@code expedition:composite_ship_hull}: the lighter hull, a quarter of a block, and as insulating. */
+    public static final DeferredBlock<Block> COMPOSITE_SHIP_HULL =
+            BLOCKS.registerSimpleBlock("composite_ship_hull", hull());
+
+    /** The Composite Ship Hull's item. */
+    public static final DeferredItem<BlockItem> COMPOSITE_SHIP_HULL_ITEM =
+            ITEMS.registerSimpleBlockItem(COMPOSITE_SHIP_HULL);
+
     private ExpeditionBlocks() {}
+
+    /** A hull block's properties: metal, mined with a pickaxe, as tough as ZAS³'s station wall. */
+    private static BlockBehaviour.Properties hull() {
+        return BlockBehaviour.Properties.of()
+                .mapColor(MapColor.METAL)
+                .strength(3.0F, 6.0F)
+                .requiresCorrectToolForDrops()
+                .sound(SoundType.METAL);
+    }
 
     /**
      * Registers the blocks, items and block entities, and puts the items in a creative tab.
@@ -88,6 +116,9 @@ public final class ExpeditionBlocks {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(SHUTTLE_COMPUTER_ITEM);
             event.accept(GAS_THRUSTER_ITEM);
+        } else if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS) {
+            event.accept(SHIP_HULL_ITEM);
+            event.accept(COMPOSITE_SHIP_HULL_ITEM);
         }
     }
 }
