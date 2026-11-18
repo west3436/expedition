@@ -11,26 +11,39 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 
 /**
- * The datapack the GameTests run with, always on, from {@code datapacks/immovable_test} in the
- * GameTest source set: it puts reinforced deepslate in {@code expedition:immovable}, which the mod
- * itself ships empty. Like the rest of the source set, it never reaches the mod jar. The event is a
- * mod-bus one, so FML subscribes the class to the mod bus.
+ * The datapacks the GameTests run with, always on, from {@code datapacks/} in the GameTest source
+ * set. Like the rest of the source set, they never reach the mod jar. The event is a mod-bus one,
+ * so FML subscribes the class to the mod bus.
+ *
+ * <ul>
+ *   <li>{@code immovable_test} puts reinforced deepslate in {@code expedition:immovable}, which the
+ *       mod itself ships empty.
+ *   <li>{@code planet_test} holds the test planet, {@code expedition_test:kepler}: a datapack-only
+ *       dimension of that id ({@code data/expedition_test/dimension/kepler.json}) and its planet
+ *       file ({@code data/expedition_test/expedition/planet/kepler.json}). {@link TestDimensions}
+ *       makes the dimension a level on the GameTest server.
+ * </ul>
  */
 @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
 public final class TestPacks {
     private TestPacks() {}
 
     /**
-     * Adds the pack.
+     * Adds the packs.
      *
      * @param event the event
      */
     @SubscribeEvent
     public static void onAddPackFinders(AddPackFindersEvent event) {
+        add(event, "immovable_test", "Expedition GameTests: immovable blocks");
+        add(event, "planet_test", "Expedition GameTests: the test planet");
+    }
+
+    private static void add(AddPackFindersEvent event, String pack, String name) {
         event.addPackFinders(
-                ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "datapacks/immovable_test"),
+                ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "datapacks/" + pack),
                 PackType.SERVER_DATA,
-                Component.literal("Expedition GameTests: immovable blocks"),
+                Component.literal(name),
                 PackSource.BUILT_IN,
                 true,
                 Pack.Position.TOP);
