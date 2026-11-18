@@ -11,17 +11,25 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 
 /**
- * The datapack the GameTests run with, always on, from {@code datapacks/immovable_test} in the
- * GameTest source set: it puts reinforced deepslate in {@code expedition:immovable}, which the mod
- * itself ships empty. Like the rest of the source set, it never reaches the mod jar. The event is a
- * mod-bus one, so FML subscribes the class to the mod bus.
+ * The datapacks the GameTests run with, always on, from {@code datapacks/} in the GameTest source
+ * set. Like the rest of the source set, they never reach the mod jar. The event is a mod-bus one,
+ * so FML subscribes the class to the mod bus.
+ *
+ * <ul>
+ *   <li>{@code immovable_test} puts reinforced deepslate in {@code expedition:immovable}, which the
+ *       mod itself ships empty.
+ *   <li>{@code planet_test} adds {@code expedition:planet_test}, a dimension made by {@code
+ *       expedition:planet}. A GameTest server builds its world from the {@code minecraft:flat} world
+ *       preset and reads no {@code dimension/} files, so the pack overrides that preset: the
+ *       Overworld, the Nether and the End as vanilla has them, and the planet beside them.
+ * </ul>
  */
 @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
 public final class TestPacks {
     private TestPacks() {}
 
     /**
-     * Adds the pack.
+     * Adds the packs.
      *
      * @param event the event
      */
@@ -31,6 +39,13 @@ public final class TestPacks {
                 ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "datapacks/immovable_test"),
                 PackType.SERVER_DATA,
                 Component.literal("Expedition GameTests: immovable blocks"),
+                PackSource.BUILT_IN,
+                true,
+                Pack.Position.TOP);
+        event.addPackFinders(
+                ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "datapacks/planet_test"),
+                PackType.SERVER_DATA,
+                Component.literal("Expedition GameTests: a planet dimension"),
                 PackSource.BUILT_IN,
                 true,
                 Pack.Position.TOP);

@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import io.github.west3436.expedition.api.ExpeditionApi;
 import io.github.west3436.expedition.command.MoveCommand;
 import io.github.west3436.expedition.mover.ShipMover;
+import io.github.west3436.expedition.worldgen.ExpeditionWorldgen;
 import io.github.west3436.zas.api.ZasApi;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -27,6 +28,7 @@ public final class ExpeditionMod {
     public ExpeditionMod(IEventBus modBus, ModContainer container) {
         container.registerConfig(ModConfig.Type.SERVER, ExpeditionConfig.SPEC);
         modBus.addListener(ExpeditionMod::onCommonSetup);
+        ExpeditionWorldgen.register(modBus);
         ShipMover.setCeiling(ExpeditionConfig.CEILING);
         ShipMover.register(NeoForge.EVENT_BUS);
         MoveCommand.register(NeoForge.EVENT_BUS);
