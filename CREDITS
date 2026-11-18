@@ -141,3 +141,18 @@ source: icons/turf/shuttle.dmi
 state: bswall0
 commit: e8a375269b9c16d7c62ed2c357c23e7bd2437ed3
 adapted: Redrawn at 16x16: the tile's outline, riveted band, bevel and panel cross, in its own colours.
+
+path: expedition/src/main/resources/assets/expedition/textures/planet/moon.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/planet/overworld.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/planet/the_end.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/planet/the_nether.png
+origin: original
+
+path: expedition/src/gametest/resources/assets/expedition_test/textures/planet/kepler.png
+origin: original
