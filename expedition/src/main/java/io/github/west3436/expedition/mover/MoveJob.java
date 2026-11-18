@@ -275,7 +275,8 @@ public final class MoveJob {
             return;
         }
         // The box's own order unless the boxes overlap, in which case each destination must be
-        // emptied before it is written, and the whole carry is done in this one tick.
+        // emptied before it is written, and the whole carry is done in this one tick. The server's
+        // ceiling for a short hop (ShipCeiling.hopExceeds) keeps that tick bounded.
         carry = request.overlaps() ? BoxWalk.ahead(request.box(), offset) : BoxWalk.topDown(request.box());
         phase = Phase.CARRYING;
     }
