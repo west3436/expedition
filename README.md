@@ -14,7 +14,7 @@ Planetary exploration for Minecraft (NeoForge 1.21.1), built on [ZAS³](https://
 
 ## Requirements
 
-ZAS³ 1.1.0 or newer is the one required mod. Every other integration is optional and loads only when its mod is installed.
+ZAS³ 1.2.0 or newer is the one required mod. Every other integration is optional and loads only when its mod is installed.
 
 ## For mod developers
 
