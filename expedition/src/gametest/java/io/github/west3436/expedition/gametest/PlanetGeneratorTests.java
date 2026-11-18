@@ -1,6 +1,8 @@
 package io.github.west3436.expedition.gametest;
 
 import io.github.west3436.expedition.ExpeditionMod;
+import io.github.west3436.expedition.api.planet.Planet;
+import io.github.west3436.expedition.api.planet.Planets;
 import io.github.west3436.expedition.worldgen.PlanetChunkGenerator;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -23,24 +25,26 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
+import net.neoforged.fml.LogicalSide;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
- * {@code expedition:planet}, the simple terrain generator (#20), on {@code expedition:planet_test}
+ * {@code expedition:planet}, the simple terrain generator (#20), on {@code expedition_test:generated}
  * from the {@code planet_test} datapack ({@link TestPacks}): stone under two blocks of tuff under
  * calcite, a bedrock floor, land at 66 ± 8 and a sea of water below 63. The dimension loads with the
- * generator, generates walkable ground, and answers {@link ChunkGenerator#getBaseHeight} and {@link
+ * generator ({@link TestDimensions} makes it a level), its planet file makes it a planet, it
+ * generates walkable ground, and it answers {@link ChunkGenerator#getBaseHeight} and {@link
  * ChunkGenerator#getBaseColumn} with what it places.
  */
 @GameTestHolder(ExpeditionMod.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class PlanetGeneratorTests {
     private static final ResourceKey<Level> PLANET = ResourceKey.create(
-            Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "planet_test"));
+            Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(TestDimensions.NAMESPACE, "generated"));
 
     private static final ResourceKey<Biome> PLANET_BIOME = ResourceKey.create(
-            Registries.BIOME, ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "planet_test"));
+            Registries.BIOME, ResourceLocation.fromNamespaceAndPath(TestDimensions.NAMESPACE, "generated"));
 
     /** The chunks the ground is checked in: two by two, far from the origin. */
     private static final int FIRST_CHUNK = 40;
@@ -67,6 +71,21 @@ public final class PlanetGeneratorTests {
         h.assertValueEqual(g.getSeaLevel(), 63, "sea level");
         h.assertValueEqual(g.seaBlock(), Blocks.WATER.defaultBlockState(), "sea block");
         h.assertTrue(level.getBiome(new BlockPos(1_000, 70, -1_000)).is(PLANET_BIOME), "the biome isn't the file's");
+        h.succeed();
+    }
+
+    /** Its planet file makes it a planet, with the square in Space the file gives. */
+    @GameTest(template = "empty")
+    public static void the_planet_dimension_is_a_planet(GameTestHelper h) {
+        Optional<Planet> found = Planets.forLevel(planet(h));
+        h.assertTrue(
+                found.isPresent(),
+                "no planet for " + PLANET.location() + "; loaded: " + Planets.all(LogicalSide.SERVER));
+        Planet planet = found.get();
+        h.assertValueEqual(planet.dimension(), PLANET, "the planet's dimension");
+        h.assertValueEqual(planet.space().centerX(), -12000, "the centre's X in Space");
+        h.assertValueEqual(planet.space().centerZ(), 4000, "the centre's Z in Space");
+        h.assertValueEqual(planet.space().size(), 2048, "the size in Space");
         h.succeed();
     }
 
@@ -215,7 +234,8 @@ public final class PlanetGeneratorTests {
     private static ServerLevel planet(GameTestHelper h) {
         ServerLevel level = h.getLevel().getServer().getLevel(PLANET);
         if (level == null) {
-            throw new GameTestAssertException("no " + PLANET.location() + ": the planet_test datapack didn't load");
+            throw new GameTestAssertException(
+                    "no " + PLANET.location() + ": the planet_test datapack or TestDimensions didn't load it");
         }
         return level;
     }

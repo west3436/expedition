@@ -1,6 +1,6 @@
 {
   "pack": {
-    "description": "Expedition GameTests: adds expedition:planet_test, a dimension made by expedition:planet",
+    "description": "Expedition GameTests: the test planets expedition_test:kepler and expedition_test:generated, and their dimensions",
     "pack_format": 48
   }
 }

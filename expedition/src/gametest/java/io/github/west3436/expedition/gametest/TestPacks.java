@@ -18,10 +18,12 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
  * <ul>
  *   <li>{@code immovable_test} puts reinforced deepslate in {@code expedition:immovable}, which the
  *       mod itself ships empty.
- *   <li>{@code planet_test} adds {@code expedition:planet_test}, a dimension made by {@code
- *       expedition:planet}. A GameTest server builds its world from the {@code minecraft:flat} world
- *       preset and reads no {@code dimension/} files, so the pack overrides that preset: the
- *       Overworld, the Nether and the End as vanilla has them, and the planet beside them.
+ *   <li>{@code planet_test} holds the test planet, {@code expedition_test:kepler}: a datapack-only
+ *       dimension of that id ({@code data/expedition_test/dimension/kepler.json}) and its planet
+ *       file ({@code data/expedition_test/expedition/planet/kepler.json}). {@link TestDimensions}
+ *       makes the dimension a level on the GameTest server. It also holds {@code
+ *       expedition_test:generated}, a planet whose dimension is made by {@code expedition:planet},
+ *       with its biome and planet file.
  * </ul>
  */
 @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
@@ -35,17 +37,15 @@ public final class TestPacks {
      */
     @SubscribeEvent
     public static void onAddPackFinders(AddPackFindersEvent event) {
+        add(event, "immovable_test", "Expedition GameTests: immovable blocks");
+        add(event, "planet_test", "Expedition GameTests: the test planet");
+    }
+
+    private static void add(AddPackFindersEvent event, String pack, String name) {
         event.addPackFinders(
-                ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "datapacks/immovable_test"),
+                ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "datapacks/" + pack),
                 PackType.SERVER_DATA,
-                Component.literal("Expedition GameTests: immovable blocks"),
-                PackSource.BUILT_IN,
-                true,
-                Pack.Position.TOP);
-        event.addPackFinders(
-                ResourceLocation.fromNamespaceAndPath(ExpeditionMod.MOD_ID, "datapacks/planet_test"),
-                PackType.SERVER_DATA,
-                Component.literal("Expedition GameTests: a planet dimension"),
+                Component.literal(name),
                 PackSource.BUILT_IN,
                 true,
                 Pack.Position.TOP);
