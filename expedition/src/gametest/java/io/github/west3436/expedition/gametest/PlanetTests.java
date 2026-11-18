@@ -164,8 +164,9 @@ public final class PlanetTests {
         // Files read, planets that would load, files that wouldn't, warnings. The test pack has four
         // planets: kepler; generated, whose dimension expedition:planet makes (PlanetGeneratorTests);
         // crust, which holds ores (PlanetOreTests); and bounded, the one with a world border
-        // (PlanetBorderTests).
-        h.assertValueEqual(List.of(summary.getArgs()), List.<Object>of(4, 4, 0L, 0L), "the summary");
+        // (PlanetBorderTests). The example_planet pack has a fifth: example, the worked example
+        // (MilestoneGateTests).
+        h.assertValueEqual(List.of(summary.getArgs()), List.<Object>of(5, 5, 0L, 0L), "the summary");
         h.assertValueEqual(chat.messages.size(), 1, "the messages besides the summary: " + chat.messages);
         h.succeed();
     }

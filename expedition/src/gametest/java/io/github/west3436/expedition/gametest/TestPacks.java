@@ -29,6 +29,10 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
  *       has no features, so its only ores are its planet file's. Last, {@code
  *       expedition_test:bounded}, the planet {@link TestPlanetBorders} gives a world border, made by
  *       {@code expedition:planet} in a dimension type of its own with a coordinate scale of 8.
+ *   <li>{@code example_planet} is the worked example for pack makers and the M3 gate (#21): {@code
+ *       expedition_test:example}, one planet of data alone with thin methane air, low gravity, its
+ *       own ores and its own mobs. Its {@code README.md} explains each file and field, and {@link
+ *       MilestoneGateTests} checks all of it.
  * </ul>
  */
 @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
@@ -44,6 +48,7 @@ public final class TestPacks {
     public static void onAddPackFinders(AddPackFindersEvent event) {
         add(event, "immovable_test", "Expedition GameTests: immovable blocks");
         add(event, "planet_test", "Expedition GameTests: the test planet");
+        add(event, "example_planet", "Expedition GameTests: the worked example planet");
     }
 
     private static void add(AddPackFindersEvent event, String pack, String name) {
