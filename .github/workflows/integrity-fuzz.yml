@@ -1,0 +1,83 @@
+name: Integrity fuzz
+
+# The mover's integrity fuzz (#12), as ZAS³ runs its own: random ships moved
+# back and forth, within the Overworld, into the Nether and back, often over
+# many ticks, and checked after every move for anything lost, made twice or
+# changed. Every PR runs one seed as part of "Build and test". This runs many
+# nightly, or from the Actions tab for any seeds, and a few on a PR that
+# changes this file, so the workflow is tried before it's needed. A failure
+# names its seed, its move and the command that replays it.
+on:
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: The first seed
+        default: "1"
+      seeds:
+        description: How many seeds to run from it
+        default: "1000"
+  schedule:
+    - cron: "47 5 * * *"
+  pull_request:
+    paths: [".github/workflows/integrity-fuzz.yml"]
+
+permissions:
+  contents: read
+
+# A scheduled run has no inputs. A PR run tries a few seeds only.
+env:
+  SEED: ${{ inputs.seed || '1' }}
+  SEEDS: ${{ inputs.seeds || (github.event_name == 'pull_request' && '40') || '1000' }}
+
+jobs:
+  # A seed takes about a third of a second, and a GameTest server a minute to
+  # start. The seeds are shared out over four jobs that run side by side, the
+  # first ones taking any remainder.
+  mover:
+    name: Mover fuzz (part ${{ matrix.part }} of 4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v6
+      # The task can succeed without the server ever starting, so the log must
+      # also say that the tests passed. Every GameTest runs, the fuzz with this
+      # part's seeds.
+      - name: Fuzz
+        timeout-minutes: 30
+        shell: bash
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          index=$(( PART - 1 ))
+          each=$(( SEEDS / 4 ))
+          extra=$(( SEEDS % 4 ))
+          count=$(( each + (index < extra ? 1 : 0) ))
+          first=$(( SEED + index * each + (index < extra ? index : extra) ))
+          touch fuzz.log
+          if [ "$count" -eq 0 ]; then
+            echo "No seeds for this part: $SEEDS shared out over 4."
+            exit 0
+          fi
+          echo "Part $PART: $count seeds from $first."
+          ./gradlew :expedition:runGameTestServer -Pfuzz.seed="$first" -Pfuzz.seeds="$count" --stacktrace | tee fuzz.log
+          grep -E "All [0-9]+ required tests passed" fuzz.log
+      - name: What each seed did
+        if: always()
+        shell: bash
+        run: |
+          grep -E "Mover fuzz: seed [0-9]+" fuzz.log || true
+      - name: Keep the log of a failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mover-fuzz-part-${{ matrix.part }}
+          path: fuzz.log
+          if-no-files-found: ignore

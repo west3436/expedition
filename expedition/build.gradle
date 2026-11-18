@@ -96,6 +96,19 @@ neoForge {
     }
 }
 
+// The mover's integrity fuzz (#12): -Pfuzz.seed=S replays seed S, -Pfuzz.seeds=N runs N seeds from
+// it, as the nightly Integrity fuzz workflow does, and -Pfuzz.moves=M gives each seed M moves. A
+// failure prints the command that replays it.
+['fuzz.seed', 'fuzz.seeds', 'fuzz.moves'].each { name ->
+    def value = providers.gradleProperty(name).orNull
+    if (value != null) {
+        if (!value.isLong()) {
+            throw new GradleException("-P${name} is a whole number, not '${value}'")
+        }
+        neoForge.runs.gameTestServer.systemProperty "expedition.$name", value
+    }
+}
+
 // -Pcontent=off runs the GameTests with ZAS³'s content mod (zas_atmos) switched off in its startup
 // config: Expedition needs the simulation, not the content, so the game has to start and the tests
 // pass without it. Every GameTest run writes the config, on or off, so one run's choice never

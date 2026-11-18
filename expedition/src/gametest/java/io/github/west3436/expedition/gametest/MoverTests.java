@@ -34,6 +34,7 @@ import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.Pig;
+import net.minecraft.world.entity.decoration.ItemFrame;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -338,6 +339,75 @@ public final class MoverTests {
                     assertClear(h, overworld, box(b));
                     assertNothingDropped(h, overworld, box(a));
                     wipe(overworld, box(a));
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * An item frame hung under the ship's roof, on a move of one position a tick: the roof would go
+     * in the first ticks and the rest of the box over 125 more, longer than the 101 ticks between a
+     * frame's checks of what holds it up. The frame goes first, with the roof above it, and arrives
+     * still hung, holding its item, and nothing drops. The integrity fuzz (#12) found frames popping
+     * off in such moves, before the mover carried them first.
+     */
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = TIMEOUT)
+    public static void an_item_frame_stays_hung_through_a_slow_move(GameTestHelper h) {
+        ServerLevel overworld = h.getLevel();
+        BlockPos a = area(5);
+        Vec3i offset = new Vec3i(100, 0, 0);
+        BoundingBox from = BoundingBox.fromCorners(a, a.offset(4, 5, 4));
+        BoundingBox to = from.moved(offset.getX(), offset.getY(), offset.getZ());
+        Vec3i frameAt = new Vec3i(2, 4, 2);
+        UUID[] frame = new UUID[1];
+        MoveJob[] job = new MoveJob[1];
+        h.startSequence()
+                .thenWaitUntil(() -> {
+                    hold(h, overworld, from);
+                    hold(h, overworld, to);
+                })
+                .thenExecute(() -> {
+                    wipe(overworld, from);
+                    wipe(overworld, to);
+                    for (BlockPos p : BlockPos.betweenClosed(
+                            from.minX(), from.maxY(), from.minZ(), from.maxX(), from.maxY(), from.maxZ())) {
+                        overworld.setBlock(p, Blocks.STONE_BRICKS.defaultBlockState(), Block.UPDATE_CLIENTS);
+                    }
+                    ItemFrame hung = new ItemFrame(overworld, a.offset(frameAt), Direction.DOWN);
+                    ItemStack keepsake = new ItemStack(Items.DIAMOND);
+                    keepsake.set(DataComponents.CUSTOM_NAME, Component.literal("Keepsake"));
+                    hung.setItem(keepsake, false);
+                    h.assertTrue(hung.survives(), "the frame can't hang under the roof");
+                    overworld.addFreshEntity(hung);
+                    frame[0] = hung.getUUID();
+                    MoveSettings slow = MoveSettings.DEFAULT.withBudget(1, ShipMover.SERVER_NANOS_PER_TICK);
+                    job[0] = ShipMover.start(MoveRequest.by(overworld, from, overworld, offset), slow);
+                })
+                .thenWaitUntil(() -> h.assertTrue(job[0].isDone(), "the slow move is still going"))
+                .thenExecute(() -> {
+                    MoveResult result = job[0].result().join();
+                    h.assertTrue(result.moved(), "the move was refused: " + result.refusal());
+                    h.assertTrue(result.ticks() > 120, "the slow move took only " + result.ticks() + " ticks");
+                    h.assertTrue(result.entities() == 1 && result.entitiesLeft() == 0, "the move carried " + result);
+                    Entity moved = overworld.getEntity(frame[0]);
+                    if (!(moved instanceof ItemFrame f) || !f.isAlive()) {
+                        throw new GameTestAssertException("the item frame is gone: " + moved);
+                    }
+                    BlockPos expected = a.offset(frameAt).offset(offset);
+                    h.assertTrue(f.getPos().equals(expected), "the frame is at " + f.getPos() + ", not " + expected);
+                    h.assertTrue(
+                            f.getItem().is(Items.DIAMOND)
+                                    && f.getItem().getHoverName().getString().equals("Keepsake"),
+                            "the frame holds " + f.getItem());
+                    h.assertTrue(f.survives(), "the frame can't hang where it arrived");
+                    assertNothingDropped(h, overworld, from);
+                    assertNothingDropped(h, overworld, to);
+                })
+                .thenIdle(105)
+                .thenExecute(() -> {
+                    h.assertTrue(overworld.getEntity(frame[0]) instanceof ItemFrame, "the frame fell after arriving");
+                    assertNothingDropped(h, overworld, to);
+                    wipe(overworld, from);
+                    wipe(overworld, to);
                 })
                 .thenSucceed();
     }
