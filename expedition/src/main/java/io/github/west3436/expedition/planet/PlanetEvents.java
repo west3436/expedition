@@ -22,6 +22,8 @@ import org.slf4j.Logger;
  *       logged.
  *   <li>A joining player is sent every planet, and every player is sent them again after a {@code
  *       /reload}.
+ *   <li>A planet's gravity is put on its living entities ({@link PlanetGravityEvents}), and put on
+ *       every entity again after a {@code /reload}.
  * </ul>
  */
 public final class PlanetEvents {
@@ -39,6 +41,7 @@ public final class PlanetEvents {
         gameBus.addListener(PlanetEvents::onServerStarted);
         gameBus.addListener(PlanetEvents::onDatapackSync);
         gameBus.addListener(PlanetEvents::onServerStopped);
+        PlanetGravityEvents.register(gameBus);
     }
 
     private static void onAddReloadListeners(AddReloadListenerEvent event) {
@@ -53,6 +56,7 @@ public final class PlanetEvents {
         if (event.getPlayer() == null) {
             // A /reload: the planets are new.
             checkWorld(event.getPlayerList().getServer());
+            PlanetGravityEvents.refresh(event.getPlayerList().getServer());
         }
         PlanetsPayload payload =
                 new PlanetsPayload(List.copyOf(PlanetRegistry.server().planets().values()));

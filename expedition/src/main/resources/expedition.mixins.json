@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "ChunkGeneratorStructureStateAccessor",
-    "ChunkMapMixin"
+    "ChunkMapMixin",
+    "EntityGravityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

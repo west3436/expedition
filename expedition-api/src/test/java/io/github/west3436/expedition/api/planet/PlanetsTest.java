@@ -9,12 +9,13 @@ import java.util.Optional;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 import net.neoforged.fml.LogicalSide;
 import org.junit.jupiter.api.Test;
 
 /**
  * The planet queries: none before Expedition installs its lookup, then its answers, one side apart
- * from the other. The lookup can be installed once per JVM, so this is one test.
+ * from the other, and the gravity they give. The lookup can be installed once per JVM, so this is one test.
  */
 class PlanetsTest {
     @Test
@@ -22,9 +23,25 @@ class PlanetsTest {
         ResourceLocation id = ResourceLocation.fromNamespaceAndPath("test", "kepler");
         assertTrue(Planets.all(LogicalSide.SERVER).isEmpty(), "planets before any lookup");
         assertTrue(Planets.byId(id, LogicalSide.SERVER).isEmpty());
+        ResourceKey<Level> overworld =
+                ResourceKey.create(Registries.DIMENSION, ResourceLocation.withDefaultNamespace("overworld"));
+        assertEquals(
+                PlanetGravity.NORMAL, PlanetGravity.of(overworld, LogicalSide.SERVER), "gravity before any lookup");
 
         Planet kepler = PlanetValuesTest.planet("kepler", SpaceSquare.of(12000, -4000, 4096));
-        Planet moon = PlanetValuesTest.planet("moon", SpaceSquare.of(20000, 0, 2048));
+        Planet base = PlanetValuesTest.planet("moon", SpaceSquare.of(20000, 0, 2048));
+        Planet moon = new Planet(
+                base.id(),
+                base.dimension(),
+                base.space(),
+                base.surface(),
+                base.atmosphere(),
+                0.16,
+                base.ores(),
+                base.oreDensity(),
+                base.mobs(),
+                base.structures(),
+                base.access());
         Planets.install(side -> side == LogicalSide.SERVER ? List.of(kepler, moon) : List.of(moon));
 
         assertEquals(Optional.of(kepler), Planets.forDimension(kepler.dimension(), LogicalSide.SERVER));
@@ -36,6 +53,14 @@ class PlanetsTest {
                         ResourceKey.create(Registries.DIMENSION, ResourceLocation.withDefaultNamespace("overworld")),
                         LogicalSide.SERVER)
                 .isEmpty());
+
+        assertEquals(0.16, PlanetGravity.of(moon.dimension(), LogicalSide.SERVER), "the moon's gravity");
+        assertEquals(0.16, PlanetGravity.of(moon.dimension(), LogicalSide.CLIENT), "the moon's gravity, client");
+        assertEquals(
+                PlanetGravity.NORMAL,
+                PlanetGravity.of(kepler.dimension(), LogicalSide.CLIENT),
+                "off the client's planets");
+        assertEquals(PlanetGravity.NORMAL, PlanetGravity.of(overworld, LogicalSide.SERVER), "the Overworld's gravity");
 
         assertThrows(IllegalStateException.class, () -> Planets.install(side -> List.of()));
     }
