@@ -1,9 +1,11 @@
 package io.github.west3436.expedition.gametest;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.west3436.expedition.ExpeditionConfig;
 import io.github.west3436.expedition.ExpeditionMod;
 import io.github.west3436.expedition.command.MoveCommand;
 import io.github.west3436.expedition.mover.MoveRefusal;
+import io.github.west3436.expedition.mover.Obstacle;
 import io.github.west3436.expedition.mover.QuietBlocks;
 import io.github.west3436.expedition.mover.ShipMover;
 import java.util.ArrayList;
@@ -266,6 +268,88 @@ public final class CommandTests {
                     wipe(level, box(b));
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * A ship over the server's ceiling (#71): a dry run and a move both name each limit it broke,
+     * with the ship's size, the limit and how far over, for the volume, the longest side and a short
+     * hop. In a batch of its own, since it changes the server's settings.
+     */
+    @GameTest(template = "empty", batch = "commands_ceiling", timeoutTicks = TIMEOUT)
+    public static void a_ship_too_large_is_told_the_limits(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        BlockPos a = area(4);
+        BlockPos b = a.offset(EAST);
+        BlockPos hop = a.offset(1, 0, 0);
+        h.startSequence()
+                .thenWaitUntil(() -> {
+                    hold(h, level, box(a));
+                    hold(h, level, box(b));
+                })
+                .thenExecute(() -> {
+                    build(level, a);
+                    wipe(level, box(b));
+                    Map<BlockPos, BlockState> before = blocks(level, a, b);
+                    int volume = ExpeditionConfig.MAX_VOLUME.getAsInt();
+                    int side = ExpeditionConfig.MAX_LONGEST_SIDE.getAsInt();
+                    int hopVolume = ExpeditionConfig.MAX_HOP_VOLUME.getAsInt();
+                    try {
+                        // The ship is 3 × 3 × 3: 27 blocks, 3 along its longest side.
+                        ExpeditionConfig.MAX_VOLUME.set(26);
+                        ExpeditionConfig.MAX_LONGEST_SIDE.set(2);
+                        ExpeditionConfig.MAX_HOP_VOLUME.set(4_096);
+                        for (boolean dryRun : new boolean[] {true, false}) {
+                            Chat chat = new Chat();
+                            int ran = run(
+                                    h, chat, level, MoveCommand.PERMISSION_LEVEL, a, "minecraft:overworld", b, dryRun);
+                            h.assertTrue(ran == 0, "the command over the ceiling returned " + ran);
+                            h.assertTrue(
+                                    chat.has(MoveRefusal.translationKey(MoveRefusal.TOO_LARGE)),
+                                    "the refusal isn't too_large: " + chat);
+                            assertLimit(h, chat, Obstacle.OverLimit.VOLUME, "27", "26", "1");
+                            assertLimit(h, chat, Obstacle.OverLimit.LONGEST_SIDE, "3", "2", "1");
+                            h.assertTrue(chat.count(KEY + "obstacle.limit") == 2, "not two limits: " + chat);
+                        }
+
+                        ExpeditionConfig.MAX_VOLUME.set(131_072);
+                        ExpeditionConfig.MAX_LONGEST_SIDE.set(64);
+                        ExpeditionConfig.MAX_HOP_VOLUME.set(26);
+                        for (boolean dryRun : new boolean[] {true, false}) {
+                            Chat chat = new Chat();
+                            int ran = run(
+                                    h,
+                                    chat,
+                                    level,
+                                    MoveCommand.PERMISSION_LEVEL,
+                                    a,
+                                    "minecraft:overworld",
+                                    hop,
+                                    dryRun);
+                            h.assertTrue(ran == 0, "the hop over its limit returned " + ran);
+                            h.assertTrue(
+                                    chat.has(MoveRefusal.translationKey(MoveRefusal.HOP_TOO_LARGE)),
+                                    "the refusal isn't hop_too_large: " + chat);
+                            assertLimit(h, chat, Obstacle.OverLimit.HOP_VOLUME, "27", "26", "1");
+                        }
+                    } finally {
+                        ExpeditionConfig.MAX_VOLUME.set(volume);
+                        ExpeditionConfig.MAX_LONGEST_SIDE.set(side);
+                        ExpeditionConfig.MAX_HOP_VOLUME.set(hopVolume);
+                    }
+                    h.assertTrue(blocks(level, a, b).equals(before), "a refused command changed something");
+                    assertShip(h, level, a);
+                    wipe(level, box(a));
+                    wipe(level, box(b));
+                })
+                .thenSucceed();
+    }
+
+    /** The chat names a limit, with the ship's size, the limit and how far over, as written. */
+    private static void assertLimit(GameTestHelper h, Chat chat, String limit, String size, String max, String over) {
+        TranslatableContents said = chat.first(Obstacle.OverLimit.KEY_PREFIX + limit);
+        h.assertTrue(
+                said != null && List.of(said.getArgs()).equals(List.of(size, max, over)),
+                "the " + limit + " limit isn't told as " + size + " over " + max + ": " + chat);
     }
 
     // ---- Running the command ------------------------------------------------------------

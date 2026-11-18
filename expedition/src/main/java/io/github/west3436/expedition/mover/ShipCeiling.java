@@ -1,5 +1,7 @@
 package io.github.west3436.expedition.mover;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.IntSupplier;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -42,6 +44,29 @@ public interface ShipCeiling {
     }
 
     /**
+     * The limits a box is over, each with the box's measure and the limit, so a refusal can say by
+     * how much. Asked only for a box that {@link #exceeds} the ceiling. By default none can be said,
+     * and the move is refused with its code alone ({@link Obstacle.OfMove}).
+     *
+     * @param box the box a move would carry
+     * @return the limits it is over, each as {@link MoveRefusal#TOO_LARGE}; may be empty
+     */
+    default List<Obstacle.OverLimit> breaches(BoundingBox box) {
+        return List.of();
+    }
+
+    /**
+     * The short-hop limits a box is over, as {@link #breaches} gives the others. Asked only for a box
+     * that {@link #hopExceeds} the ceiling for a hop.
+     *
+     * @param box the box the hop would carry
+     * @return the limits it is over, each as {@link MoveRefusal#HOP_TOO_LARGE}; may be empty
+     */
+    default List<Obstacle.OverLimit> hopBreaches(BoundingBox box) {
+        return List.of();
+    }
+
+    /**
      * A ceiling on a box's volume and on its longest side, and on the volume of a short hop. Each
      * limit is read every time the ceiling is asked, so one that changes, such as a server setting
      * that is reloaded, applies from the next move. A box at a limit is within it.
@@ -65,6 +90,33 @@ public interface ShipCeiling {
             @Override
             public boolean hopExceeds(BoundingBox box) {
                 return volume(box) > maxHopVolume.getAsInt();
+            }
+
+            @Override
+            public List<Obstacle.OverLimit> breaches(BoundingBox box) {
+                List<Obstacle.OverLimit> over = new ArrayList<>(2);
+                long volume = volume(box);
+                int maxV = maxVolume.getAsInt();
+                if (volume > maxV) {
+                    over.add(new Obstacle.OverLimit(MoveRefusal.TOO_LARGE, Obstacle.OverLimit.VOLUME, volume, maxV));
+                }
+                int side = longestSide(box);
+                int maxSide = maxLongestSide.getAsInt();
+                if (side > maxSide) {
+                    over.add(new Obstacle.OverLimit(
+                            MoveRefusal.TOO_LARGE, Obstacle.OverLimit.LONGEST_SIDE, side, maxSide));
+                }
+                return over;
+            }
+
+            @Override
+            public List<Obstacle.OverLimit> hopBreaches(BoundingBox box) {
+                long volume = volume(box);
+                int max = maxHopVolume.getAsInt();
+                return volume > max
+                        ? List.of(new Obstacle.OverLimit(
+                                MoveRefusal.HOP_TOO_LARGE, Obstacle.OverLimit.HOP_VOLUME, volume, max))
+                        : List.of();
             }
         };
     }
