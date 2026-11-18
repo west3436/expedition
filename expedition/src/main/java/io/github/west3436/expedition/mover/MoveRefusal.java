@@ -26,14 +26,17 @@ public final class MoveRefusal {
     /** The box holds a block in the {@code expedition:immovable} tag ({@link ExpeditionTags#IMMOVABLE}). */
     public static final String IMMOVABLE = "immovable";
 
-    /** The box is over the server's ceiling, as {@link ShipMover#ceiling()} judges it. */
+    /**
+     * The box is over the server's ceiling, as {@link ShipMover#ceiling()} judges it. A dry run lists
+     * each limit it is over as an {@link Obstacle.OverLimit}, with the box's size and the limit.
+     */
     public static final String TOO_LARGE = "too_large";
 
     /**
      * The move is a short hop, whose destination overlaps its own box, and the box is over the
      * server's ceiling for one, as {@link ShipCeiling#hopExceeds} judges it. The mover carries a short
      * hop whole in one tick, so a large one would stall the server; the same box may still move
-     * further, clear of itself.
+     * further, clear of itself. A dry run lists the limit as an {@link Obstacle.OverLimit}.
      */
     public static final String HOP_TOO_LARGE = "hop_too_large";
 
@@ -105,5 +108,17 @@ public final class MoveRefusal {
      */
     public static Component message(String code) {
         return Component.translatableWithFallback(translationKey(code), code);
+    }
+
+    /**
+     * An obstacle's message, for a player or an operator: a limit the ship is over says which, with
+     * the ship's size and the limit ({@link Obstacle.OverLimit#message()}); any other obstacle gives
+     * its code's {@link #message(String) message}.
+     *
+     * @param obstacle an obstacle from a {@link DryRun}
+     * @return the message
+     */
+    public static Component message(Obstacle obstacle) {
+        return obstacle instanceof Obstacle.OverLimit limit ? limit.message() : message(obstacle.code());
     }
 }

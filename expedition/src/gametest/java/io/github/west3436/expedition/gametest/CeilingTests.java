@@ -12,6 +12,7 @@ import io.github.west3436.expedition.mover.QuietBlocks;
 import io.github.west3436.expedition.mover.ShipMover;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -71,13 +72,27 @@ public final class CeilingTests {
     /** A ship one block over the volume, though within the longest side, is refused as too large. */
     @GameTest(template = "empty", batch = "ship_ceiling_volume", timeoutTicks = TIMEOUT)
     public static void a_ship_over_the_volume_is_refused(GameTestHelper h) {
-        assertRefusedUnder(h, area(0), EAST, VOLUME - 1, 64, 4_096, MoveRefusal.TOO_LARGE);
+        assertRefusedUnder(
+                h,
+                area(0),
+                EAST,
+                VOLUME - 1,
+                64,
+                4_096,
+                new Obstacle.OverLimit(MoveRefusal.TOO_LARGE, Obstacle.OverLimit.VOLUME, VOLUME, VOLUME - 1));
     }
 
     /** A ship one block over the longest side, though within the volume, is refused as too large. */
     @GameTest(template = "empty", batch = "ship_ceiling_side", timeoutTicks = TIMEOUT)
     public static void a_ship_over_the_longest_side_is_refused(GameTestHelper h) {
-        assertRefusedUnder(h, area(1), EAST, 131_072, SIDE - 1, 4_096, MoveRefusal.TOO_LARGE);
+        assertRefusedUnder(
+                h,
+                area(1),
+                EAST,
+                131_072,
+                SIDE - 1,
+                4_096,
+                new Obstacle.OverLimit(MoveRefusal.TOO_LARGE, Obstacle.OverLimit.LONGEST_SIDE, SIDE, SIDE - 1));
     }
 
     /**
@@ -95,7 +110,14 @@ public final class CeilingTests {
      */
     @GameTest(template = "empty", batch = "ship_ceiling_hop_over", timeoutTicks = TIMEOUT)
     public static void a_short_hop_over_its_limit_is_refused(GameTestHelper h) {
-        assertRefusedUnder(h, area(3), HOP, 131_072, 64, VOLUME - 1, MoveRefusal.HOP_TOO_LARGE);
+        assertRefusedUnder(
+                h,
+                area(3),
+                HOP,
+                131_072,
+                64,
+                VOLUME - 1,
+                new Obstacle.OverLimit(MoveRefusal.HOP_TOO_LARGE, Obstacle.OverLimit.HOP_VOLUME, VOLUME, VOLUME - 1));
     }
 
     /** A short hop onto the ship's own box, at the short-hop limit, moves. */
@@ -137,11 +159,13 @@ public final class CeilingTests {
     // ---- What each test does ------------------------------------------------------------
 
     /**
-     * Under the given settings, a move of the ship by {@code offset} is refused with {@code code},
-     * the dry run says so first, and neither end changes.
+     * Under the given settings, a move of the ship by {@code offset} is refused with the limit's
+     * code, the dry run names that limit, with the ship's size and the limit (#71), and nothing else,
+     * and neither end changes.
      */
     private static void assertRefusedUnder(
-            GameTestHelper h, BlockPos a, Vec3i offset, int volume, int side, int hop, String code) {
+            GameTestHelper h, BlockPos a, Vec3i offset, int volume, int side, int hop, Obstacle.OverLimit limit) {
+        String code = limit.code();
         ServerLevel level = h.getLevel();
         BoundingBox from = box(a);
         BoundingBox to = from.moved(offset.getX(), offset.getY(), offset.getZ());
@@ -161,8 +185,8 @@ public final class CeilingTests {
                         DryRun dry = ShipMover.dryRun(request);
                         h.assertTrue(
                                 dry.refusal().equals(Optional.of(code))
-                                        && dry.obstacles().get(0).equals(new Obstacle.OfMove(code)),
-                                "expected a dry run refused as " + code + ", found " + dry.obstacles());
+                                        && dry.obstacles(code).equals(List.of(limit)),
+                                "expected a dry run refused for " + limit + ", found " + dry.obstacles());
                         MoveJob job = ShipMover.start(request);
                         h.assertTrue(job.isDone(), "a refused move is still going");
                         MoveResult result = job.result().join();

@@ -9,6 +9,7 @@ import io.github.west3436.expedition.planet.PlanetBorders;
 import io.github.west3436.expedition.planet.PlanetEvents;
 import io.github.west3436.expedition.planet.PlanetRegistry;
 import io.github.west3436.expedition.planet.PlanetsPayload;
+import io.github.west3436.expedition.ship.BlockWeights;
 import io.github.west3436.expedition.worldgen.ExpeditionWorldgen;
 import io.github.west3436.zas.api.ZasApi;
 import net.neoforged.bus.api.IEventBus;
@@ -42,6 +43,7 @@ public final class ExpeditionMod {
         PlanetBorders.register(modBus, NeoForge.EVENT_BUS);
         PlanetCommand.register(NeoForge.EVENT_BUS);
         modBus.addListener(PlanetsPayload::register);
+        BlockWeights.register(modBus);
     }
 
     private static void onCommonSetup(FMLCommonSetupEvent event) {

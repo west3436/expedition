@@ -234,6 +234,11 @@ class PlanetFormatTest {
     }
 
     @Test
+    void spaceIsNoPlanet() {
+        assertProblems(MINIMAL.replace("mypack:kepler", "expedition:space"), "dimension reserved_dimension");
+    }
+
+    @Test
     void theSpaceSquareIsChecked() {
         assertProblems(with("space", "{ \"center\": [1] }"), "space.center not_pair");
         assertProblems(with("space", "{ \"center\": [1.5, 0] }"), "space.center[0] not_integer");

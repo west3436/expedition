@@ -1,0 +1,19 @@
+{
+  "type": "expedition:moon",
+  "generator": {
+    "type": "expedition:planet",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "expedition:moon"
+    },
+    "base_block": "minecraft:stone",
+    "filler_block": "minecraft:andesite",
+    "filler_depth": 4,
+    "surface_block": "minecraft:light_gray_concrete_powder",
+    "floor_block": "minecraft:bedrock",
+    "ground_level": 64,
+    "amplitude": 14,
+    "scale": 96,
+    "sea_block": "minecraft:air"
+  }
+}
