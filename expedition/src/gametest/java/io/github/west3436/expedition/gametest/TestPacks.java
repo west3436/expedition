@@ -28,7 +28,10 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
  *       expedition_test:crust}, a flat planet of stone whose biome, {@code expedition_test:bare},
  *       has no features, so its only ores are its planet file's. Last, {@code
  *       expedition_test:bounded}, the planet {@link TestPlanetBorders} gives a world border, made by
- *       {@code expedition:planet} in a dimension type of its own with a coordinate scale of 8.
+ *       {@code expedition:planet} in a dimension type of its own with a coordinate scale of 8. It
+ *       also replaces the mod's own planet file for the Nether, {@code expedition:the_nether}, with
+ *       one that denies bastions, so {@link PlanetStructureTests} has vanilla's noise generator to
+ *       filter.
  *   <li>{@code example_planet} is the worked example for pack makers and the M3 gate (#21): {@code
  *       expedition_test:example}, one planet of data alone with thin methane air, low gravity, its
  *       own ores and its own mobs. Its {@code README.md} explains each file and field, and {@link

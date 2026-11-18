@@ -9,6 +9,7 @@ import io.github.west3436.expedition.api.planet.PlanetMob;
 import io.github.west3436.expedition.api.planet.PlanetOre;
 import io.github.west3436.expedition.api.planet.Planets;
 import io.github.west3436.expedition.api.planet.StructureRef;
+import io.github.west3436.expedition.api.space.Space;
 import io.github.west3436.expedition.command.PlanetCommand;
 import io.github.west3436.expedition.planet.PlanetLoader;
 import io.github.west3436.expedition.planet.PlanetProblem;
@@ -27,7 +28,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.level.Level;
 import net.neoforged.fml.LogicalSide;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -126,8 +126,12 @@ public final class PlanetTests {
         h.assertValueEqual(planet.get().dimension(), TestDimensions.KEPLER, "the planet's dimension");
         h.assertValueEqual(Planets.byId(KEPLER, LogicalSide.SERVER), planet, "the planet by its id");
         h.assertTrue(Planets.all(LogicalSide.SERVER).contains(planet.get()), "all() leaves it out");
-        h.assertTrue(Planets.forLevel(server.overworld()).isEmpty(), "the Overworld is a planet");
-        h.assertTrue(Planets.forLevel(server.getLevel(Level.NETHER)).isEmpty(), "the Nether is a planet");
+        h.assertTrue(
+                Planets.forLevel(server.overworld())
+                        .filter(p -> p.id().equals(KEPLER))
+                        .isEmpty(),
+                "the Overworld is the test planet");
+        h.assertTrue(Planets.forLevel(server.getLevel(Space.DIMENSION)).isEmpty(), "Space is a planet");
         h.assertTrue(
                 Planets.forDimension(TestDimensions.KEPLER, LogicalSide.CLIENT).isEmpty(),
                 "the dedicated server's client side has planets");
@@ -165,8 +169,9 @@ public final class PlanetTests {
         // planets: kepler; generated, whose dimension expedition:planet makes (PlanetGeneratorTests);
         // crust, which holds ores (PlanetOreTests); and bounded, the one with a world border
         // (PlanetBorderTests). The example_planet pack has a fifth: example, the worked example
-        // (MilestoneGateTests).
-        h.assertValueEqual(List.of(summary.getArgs()), List.<Object>of(5, 5, 0L, 0L), "the summary");
+        // (MilestoneGateTests). The mod itself ships four more: the Overworld, the Nether (whose
+        // file the test pack replaces), the End and the moon (ShippedPlanetTests).
+        h.assertValueEqual(List.of(summary.getArgs()), List.<Object>of(9, 9, 0L, 0L), "the summary");
         h.assertValueEqual(chat.messages.size(), 1, "the messages besides the summary: " + chat.messages);
         h.succeed();
     }
