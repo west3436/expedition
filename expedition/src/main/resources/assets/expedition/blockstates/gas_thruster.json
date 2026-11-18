@@ -1,0 +1,27 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "expedition:block/gas_thruster"
+    },
+    "facing=east": {
+      "model": "expedition:block/gas_thruster",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "expedition:block/gas_thruster",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "expedition:block/gas_thruster",
+      "y": 270
+    },
+    "facing=up": {
+      "model": "expedition:block/gas_thruster",
+      "x": 270
+    },
+    "facing=down": {
+      "model": "expedition:block/gas_thruster",
+      "x": 90
+    }
+  }
+}
