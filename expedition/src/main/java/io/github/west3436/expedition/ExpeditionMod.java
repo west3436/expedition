@@ -4,6 +4,8 @@ import com.mojang.logging.LogUtils;
 import io.github.west3436.expedition.api.ExpeditionApi;
 import io.github.west3436.expedition.command.MoveCommand;
 import io.github.west3436.expedition.command.PlanetCommand;
+import io.github.west3436.expedition.drive.gas.GasFuels;
+import io.github.west3436.expedition.drive.gas.GasThrusters;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.planet.PlanetBorders;
 import io.github.west3436.expedition.planet.PlanetEvents;
@@ -50,6 +52,9 @@ public final class ExpeditionMod {
         BlockWeights.register(modBus);
         ExpeditionBlocks.register(modBus);
         modBus.addListener(ComputerStatusPayload::register);
+        GasThrusters.setSettings(ExpeditionConfig.GAS_THRUSTER);
+        GasThrusters.register();
+        GasFuels.register(NeoForge.EVENT_BUS);
     }
 
     private static void onCommonSetup(FMLCommonSetupEvent event) {

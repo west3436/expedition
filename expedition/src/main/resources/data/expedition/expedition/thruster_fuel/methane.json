@@ -1,0 +1,9 @@
+{
+  "gas": "zas:methane",
+  "heat": 802000,
+  "oxidiser": 2,
+  "exhaust": {
+    "zas:carbon_dioxide": 1,
+    "zas:water_vapor": 2
+  }
+}
