@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:overworld",
+  "generator": {
+    "type": "expedition:planet",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "expedition_test:example_lowlands"
+    },
+    "base_block": "minecraft:stone",
+    "filler_block": "minecraft:packed_ice",
+    "filler_depth": 2,
+    "surface_block": "minecraft:snow_block",
+    "floor_block": "minecraft:bedrock",
+    "ground_level": 64,
+    "amplitude": 10,
+    "scale": 160,
+    "sea_block": "minecraft:air"
+  }
+}

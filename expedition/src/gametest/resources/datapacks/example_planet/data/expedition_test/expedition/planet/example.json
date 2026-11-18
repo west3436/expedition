@@ -1,0 +1,23 @@
+{
+  "dimension": "expedition_test:example",
+  "space": { "center": [20000, 20000], "size": 4096 },
+  "surface": { "center": [0, 0] },
+  "atmosphere": {
+    "partial_pressures": { "zas:methane": 4.0, "zas:nitrogen": 1.0 },
+    "temperature": { "day": 180, "night": 130 }
+  },
+  "gravity": 0.6,
+  "ores": [
+    { "block": "minecraft:iron_ore", "weight": 30 },
+    { "block": "minecraft:copper_ore", "weight": 10 },
+    { "block": "minecraft:coal_ore", "weight": 20, "vein_size": 12, "y": [0, 80] }
+  ],
+  "ore_density": 2.0,
+  "mobs": {
+    "replace_existing": true,
+    "monster": [ { "type": "minecraft:stray", "weight": 10, "group": [1, 2] } ],
+    "creature": [ { "type": "minecraft:goat", "weight": 5, "group": [1, 2] } ]
+  },
+  "structures": { "deny": ["#minecraft:village"] },
+  "access": { "hidden_until_scanned": false }
+}
