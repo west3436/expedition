@@ -1,5 +1,6 @@
 package io.github.west3436.expedition.planet;
 
+import io.github.west3436.expedition.api.planet.StructureRef;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -208,11 +209,10 @@ public record StructureRules(Optional<Matcher> allow, Matcher deny) {
     }
 
     /**
-     * Resolves a planet's lists as written. An entry is a structure id, a structure-set id, or
-     * either kind of tag, written with {@code #}. A plain id is looked up as both a structure and a
-     * set: vanilla has ids that are both, such as {@code minecraft:trial_chambers}, and each such set
-     * holds only the structure of its name. A tag is looked up as a structure tag and as a
-     * structure-set tag.
+     * Resolves a planet's lists as its file wrote them. An entry is a structure id, a structure-set
+     * id, or either kind of tag. A plain id is looked up as both a structure and a set: vanilla has
+     * ids that are both, such as {@code minecraft:trial_chambers}, and each such set holds only the
+     * structure of its name. A tag is looked up as a structure tag and as a structure-set tag.
      *
      * <p>An entry that names nothing is reported and skipped. An {@code allow} that resolves to
      * nothing still keeps nothing, since the planet gave one.
@@ -224,41 +224,47 @@ public record StructureRules(Optional<Matcher> allow, Matcher deny) {
      * @return the rules
      */
     public static StructureRules resolve(
-            List<String> allow, List<String> deny, Lookup lookup, Consumer<String> problems) {
+            List<StructureRef> allow, List<StructureRef> deny, Lookup lookup, Consumer<String> problems) {
         Optional<Matcher> allowed =
                 allow.isEmpty() ? Optional.empty() : Optional.of(matcher("allow", allow, lookup, problems));
         return new StructureRules(allowed, matcher("deny", deny, lookup, problems));
     }
 
-    private static Matcher matcher(String field, List<String> entries, Lookup lookup, Consumer<String> problems) {
+    /**
+     * Whether an entry names anything: a structure or a structure set for an id, a structure tag or
+     * a structure-set tag for a tag.
+     *
+     * @param ref the entry
+     * @param lookup the registries
+     * @return true when it does
+     */
+    public static boolean exists(StructureRef ref, Lookup lookup) {
+        if (ref.tag()) {
+            return lookup.structureTag(ref.id()).isPresent()
+                    || lookup.setTag(ref.id()).isPresent();
+        }
+        return lookup.hasStructure(ref.id()) || lookup.hasSet(ref.id());
+    }
+
+    private static Matcher matcher(String field, List<StructureRef> entries, Lookup lookup, Consumer<String> problems) {
         Set<ResourceLocation> structures = new HashSet<>();
         Set<ResourceLocation> sets = new HashSet<>();
-        for (String entry : entries) {
-            boolean tag = entry.startsWith("#");
-            ResourceLocation id = ResourceLocation.tryParse(tag ? entry.substring(1) : entry);
-            if (id == null) {
-                problems.accept(field + ": '" + entry + "' isn't an id");
-                continue;
-            }
-            if (tag) {
-                Optional<Set<ResourceLocation>> ofStructures = lookup.structureTag(id);
-                Optional<Set<ResourceLocation>> ofSets = lookup.setTag(id);
-                ofStructures.ifPresent(structures::addAll);
-                ofSets.ifPresent(sets::addAll);
-                if (ofStructures.isEmpty() && ofSets.isEmpty()) {
-                    problems.accept(field + ": no structure or structure-set tag " + entry);
-                }
+        for (StructureRef entry : entries) {
+            ResourceLocation id = entry.id();
+            if (!exists(entry, lookup)) {
+                problems.accept(field + ": " + entry
+                        + (entry.tag()
+                                ? " isn't a structure tag or a structure-set tag"
+                                : " isn't a structure or a structure set"));
+            } else if (entry.tag()) {
+                lookup.structureTag(id).ifPresent(structures::addAll);
+                lookup.setTag(id).ifPresent(sets::addAll);
             } else {
-                boolean structure = lookup.hasStructure(id);
-                boolean set = lookup.hasSet(id);
-                if (structure) {
+                if (lookup.hasStructure(id)) {
                     structures.add(id);
                 }
-                if (set) {
+                if (lookup.hasSet(id)) {
                     sets.add(id);
-                }
-                if (!structure && !set) {
-                    problems.accept(field + ": no structure or structure set " + entry);
                 }
             }
         }

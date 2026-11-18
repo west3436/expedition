@@ -96,11 +96,13 @@ public final class PlanetTests {
 
         h.assertValueEqual(
                 kepler.structures().allow(),
-                List.of(new StructureRef(ResourceLocation.withDefaultNamespace("igloo"), false)),
+                List.of(
+                        new StructureRef(ResourceLocation.withDefaultNamespace("igloo"), false),
+                        new StructureRef(ResourceLocation.withDefaultNamespace("village"), true)),
                 "the allowed structures");
         h.assertValueEqual(
                 kepler.structures().deny(),
-                List.of(new StructureRef(ResourceLocation.withDefaultNamespace("village"), true)),
+                List.of(new StructureRef(ResourceLocation.withDefaultNamespace("village_snowy"), false)),
                 "the denied structures");
         h.assertFalse(kepler.access().hiddenUntilScanned(), "hidden until scanned");
 

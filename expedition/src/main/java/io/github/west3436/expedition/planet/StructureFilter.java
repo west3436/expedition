@@ -1,12 +1,16 @@
 package io.github.west3436.expedition.planet;
 
 import com.mojang.logging.LogUtils;
+import io.github.west3436.expedition.api.planet.Planet;
+import io.github.west3436.expedition.api.planet.PlanetStructures;
+import io.github.west3436.expedition.api.planet.Planets;
 import io.github.west3436.expedition.mixin.ChunkGeneratorStructureStateAccessor;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -21,6 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.neoforged.fml.LogicalSide;
 import org.slf4j.Logger;
 
 /**
@@ -30,8 +35,8 @@ import org.slf4j.Logger;
  * ServerLevel} constructor works out its placements and stronghold rings right after, before any
  * chunk generates. {@code ChunkMapMixin} calls {@link #apply} between the two, so the planet's
  * rules decide both what generates and what {@code /locate} finds. Worldgen threads read the state
- * afterwards, so it isn't rebuilt on a running server: a changed list takes effect at the next
- * start.
+ * afterwards, so it isn't rebuilt on a running server: lists changed by a {@code /reload} take
+ * effect at the next start, and {@link PlanetLoader#checkWorld} says so.
  *
  * <p>A set that loses some of its structures gives their spots to the rest, as vanilla does when
  * the structure it picks can't generate there: with bastions denied, every Nether complex is a
@@ -40,32 +45,7 @@ import org.slf4j.Logger;
 public final class StructureFilter {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    /**
-     * A planet's {@code structures} lists as written.
-     *
-     * @param allow the {@code allow} entries, empty when left out
-     * @param deny the {@code deny} entries, empty when left out
-     */
-    public record Lists(List<String> allow, List<String> deny) {
-        /** No lists. */
-        public static final Lists NONE = new Lists(List.of(), List.of());
-
-        public Lists {
-            allow = List.copyOf(allow);
-            deny = List.copyOf(deny);
-        }
-
-        /**
-         * Whether the lists are both empty, so they change nothing.
-         *
-         * @return true when both are empty
-         */
-        public boolean isEmpty() {
-            return allow.isEmpty() && deny.isEmpty();
-        }
-    }
-
-    /** Where the lists for a dimension come from. */
+    /** Where a dimension's lists come from. */
     @FunctionalInterface
     public interface Source {
         /**
@@ -74,12 +54,17 @@ public final class StructureFilter {
          * @param dimension the dimension
          * @return its planet's lists, or empty when it isn't a planet
          */
-        Optional<Lists> lists(ResourceKey<Level> dimension);
+        Optional<PlanetStructures> structures(ResourceKey<Level> dimension);
     }
 
-    private static final Source NO_PLANETS = dimension -> Optional.empty();
+    /** The server's planets, as its datapacks loaded them. */
+    public static final Source PLANETS =
+            dimension -> Planets.forDimension(dimension, LogicalSide.SERVER).map(Planet::structures);
 
-    private static volatile Source source = NO_PLANETS;
+    private static volatile Source source = PLANETS;
+
+    /** The lists each level was built with, by dimension, until the server stops. */
+    private static final Map<ResourceKey<Level>, PlanetStructures> APPLIED = new ConcurrentHashMap<>();
 
     /** The game's structure sets, as the rule reads them. */
     private static final StructureRules.SetView<Holder<StructureSet>, StructureSet.StructureSelectionEntry> SETS =
@@ -110,12 +95,29 @@ public final class StructureFilter {
     private StructureFilter() {}
 
     /**
-     * Sets where the lists come from. Levels built after this use it.
+     * Sets where the lists come from: {@link #PLANETS} unless a test says otherwise. Levels built
+     * after this use it.
      *
      * @param source the source
      */
     public static void setSource(Source source) {
         StructureFilter.source = Objects.requireNonNull(source);
+    }
+
+    /**
+     * The lists a level was built with.
+     *
+     * @param dimension the level's dimension
+     * @return its lists ({@link PlanetStructures#DEFAULT} for a level that isn't a planet), or empty
+     *     when no such level has been built since the server started
+     */
+    public static Optional<PlanetStructures> applied(ResourceKey<Level> dimension) {
+        return Optional.ofNullable(APPLIED.get(dimension));
+    }
+
+    /** Forgets the levels built, as the server stops. */
+    public static void clearApplied() {
+        APPLIED.clear();
     }
 
     /**
@@ -127,8 +129,9 @@ public final class StructureFilter {
      */
     public static void apply(ServerLevel level, ChunkGeneratorStructureState state) {
         ResourceKey<Level> dimension = level.dimension();
-        Lists lists = source.lists(dimension).orElse(Lists.NONE);
-        if (lists.isEmpty()) {
+        PlanetStructures lists = source.structures(dimension).orElse(PlanetStructures.DEFAULT);
+        APPLIED.put(dimension, lists);
+        if (lists.allow().isEmpty() && lists.deny().isEmpty()) {
             return;
         }
         String name = dimension.location().toString();
@@ -158,18 +161,12 @@ public final class StructureFilter {
     }
 
     /**
-     * Resolves lists against a server's registries.
+     * What a server's registries hold, for resolving and checking lists.
      *
-     * @param lists the lists as written
      * @param registries the server's registries
-     * @param problems told of each entry that names nothing
-     * @return the rules
+     * @return the lookup
      */
-    public static StructureRules resolve(Lists lists, RegistryAccess registries, Consumer<String> problems) {
-        return StructureRules.resolve(lists.allow(), lists.deny(), lookup(registries), problems);
-    }
-
-    private static StructureRules.Lookup lookup(RegistryAccess registries) {
+    public static StructureRules.Lookup lookup(RegistryAccess registries) {
         Registry<Structure> structures = registries.registryOrThrow(Registries.STRUCTURE);
         Registry<StructureSet> sets = registries.registryOrThrow(Registries.STRUCTURE_SET);
         return new StructureRules.Lookup() {

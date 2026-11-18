@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.west3436.expedition.api.planet.StructureRef;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -93,9 +94,18 @@ class StructureRulesTest {
         return out;
     }
 
+    /** Entries as a planet file writes them. */
+    private static List<StructureRef> refs(List<String> entries) {
+        return entries.stream()
+                .map(entry -> entry.startsWith("#")
+                        ? new StructureRef(ResourceLocation.parse(entry.substring(1)), true)
+                        : new StructureRef(ResourceLocation.parse(entry), false))
+                .toList();
+    }
+
     private static StructureRules rules(List<String> allow, List<String> deny) {
         List<String> problems = new ArrayList<>();
-        StructureRules rules = StructureRules.resolve(allow, deny, LOOKUP, problems::add);
+        StructureRules rules = StructureRules.resolve(refs(allow), refs(deny), LOOKUP, problems::add);
         assertEquals(List.of(), problems);
         return rules;
     }
@@ -187,18 +197,33 @@ class StructureRulesTest {
     void entriesThatNameNothingAreReportedAndSkipped() {
         List<String> problems = new ArrayList<>();
         StructureRules rules = StructureRules.resolve(
-                List.of(), List.of("minecraft:no_such", "#mypack:no_such_tag", "Not An Id"), LOOKUP, problems::add);
+                List.of(),
+                refs(List.of("minecraft:no_such", "#mypack:no_such_tag", "#minecraft:village_plains")),
+                LOOKUP,
+                problems::add);
         assertEquals(3, problems.size(), problems.toString());
         assertTrue(problems.get(0).contains("minecraft:no_such"), problems.get(0));
         assertTrue(problems.get(1).contains("#mypack:no_such_tag"), problems.get(1));
-        assertTrue(problems.get(2).contains("Not An Id"), problems.get(2));
+        // A structure's id written as a tag names no tag.
+        assertTrue(problems.get(2).contains("#minecraft:village_plains"), problems.get(2));
         assertTrue(rules.keepsEverything());
         assertEquals(LEVEL, apply(rules));
     }
 
     @Test
+    void existsTakesStructuresSetsAndBothKindsOfTag() {
+        for (String entry : List.of(
+                "minecraft:village_plains", "minecraft:villages", "#minecraft:village", "#mypack:underground")) {
+            assertTrue(StructureRules.exists(refs(List.of(entry)).get(0), LOOKUP), entry);
+        }
+        for (String entry : List.of("minecraft:village", "#minecraft:villages", "mypack:underground")) {
+            assertFalse(StructureRules.exists(refs(List.of(entry)).get(0), LOOKUP), entry);
+        }
+    }
+
+    @Test
     void anAllowThatResolvesToNothingStillKeepsNothing() {
-        StructureRules rules = StructureRules.resolve(List.of("#mypack:no_such_tag"), List.of(), LOOKUP, p -> {});
+        StructureRules rules = StructureRules.resolve(refs(List.of("#mypack:no_such_tag")), List.of(), LOOKUP, p -> {});
         assertFalse(rules.keepsEverything());
         assertEquals(List.of(), apply(rules));
     }

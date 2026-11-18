@@ -1,12 +1,25 @@
 package io.github.west3436.expedition.gametest;
 
 import io.github.west3436.expedition.ExpeditionMod;
+import io.github.west3436.expedition.api.planet.Planet;
+import io.github.west3436.expedition.api.planet.PlanetStructures;
+import io.github.west3436.expedition.api.planet.Planets;
+import io.github.west3436.expedition.planet.PlanetLoader;
+import io.github.west3436.expedition.planet.PlanetProblem;
+import io.github.west3436.expedition.planet.PlanetRegistry;
+import io.github.west3436.expedition.planet.StructureFilter;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -23,13 +36,17 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
- * A planet's structure lists on a dimension Expedition doesn't generate: the Nether, with vanilla's
- * noise generator, denies bastions ({@link TestPlanetStructures}). Bastions and fortresses share one
- * structure set, {@code minecraft:nether_complexes}, so this also checks that one structure can go
- * while the rest of its set stays.
+ * A planet's structure lists, on two generators Expedition doesn't own:
  *
- * <p>Each test compares the level's structure state with a fresh one that the Nether's generator
- * builds the vanilla way.
+ * <ul>
+ *   <li>The test planet's file, on {@code expedition_test:kepler}'s flat generator.
+ *   <li>The Nether, with vanilla's noise generator, denying bastions ({@link TestPlanetStructures}).
+ *       Bastions and fortresses share one structure set, {@code minecraft:nether_complexes}, so this
+ *       also checks that one structure can go while the rest of its set stays.
+ * </ul>
+ *
+ * <p>Each test compares the level's structure state with a fresh one that its generator builds the
+ * vanilla way.
  */
 @GameTestHolder(ExpeditionMod.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -67,6 +84,94 @@ public final class PlanetStructureTests {
         if (!condition) {
             throw new GameTestAssertException(message);
         }
+    }
+
+    /** The structures in a state, by id, set by set. */
+    private static Map<String, List<String>> contents(ChunkGeneratorStructureState state) {
+        Map<String, List<String>> contents = new TreeMap<>();
+        for (Holder<StructureSet> set : state.possibleStructureSets()) {
+            // A rebuilt set has no id of its own, so each set is named by its first structure.
+            List<String> structures = set.value().structures().stream()
+                    .map(entry -> entry.structure()
+                            .unwrapKey()
+                            .orElseThrow()
+                            .location()
+                            .toString())
+                    .sorted()
+                    .toList();
+            contents.put(structures.get(0), structures);
+        }
+        return contents;
+    }
+
+    /**
+     * The test planet's file, on the flat generator of {@code expedition_test:kepler}: igloos,
+     * villages and mineshafts, with {@code "allow": ["minecraft:igloo", "#minecraft:village"]} and
+     * {@code "deny": ["minecraft:village_snowy"]}. Igloos stay by their structure, villages by their
+     * tag less the denied one, and mineshafts go, since the allow list doesn't name them.
+     */
+    @GameTest(template = "empty")
+    public static void planet_file_lists_apply(GameTestHelper helper) {
+        ServerLevel kepler = helper.getLevel().getServer().getLevel(TestDimensions.KEPLER);
+        check(kepler != null, "no test planet level");
+        Map<String, List<String>> planet = contents(kepler.getChunkSource().getGeneratorState());
+        Map<String, List<String>> control = contents(vanilla(kepler));
+        check(
+                control.keySet().equals(Set.of("minecraft:igloo", "minecraft:mineshaft", "minecraft:village_desert")),
+                "control: the flat generator's sets are " + control);
+        check(
+                control.get("minecraft:village_desert").contains("minecraft:village_snowy"),
+                "control: villages without the snowy village: " + control);
+        Map<String, List<String>> expected = new TreeMap<>();
+        expected.put("minecraft:igloo", List.of("minecraft:igloo"));
+        List<String> villages = new java.util.ArrayList<>(control.get("minecraft:village_desert"));
+        villages.remove("minecraft:village_snowy");
+        expected.put("minecraft:village_desert", villages);
+        check(planet.equals(expected), "the planet's sets are " + planet + ", not " + expected);
+        check(
+                StructureFilter.applied(TestDimensions.KEPLER)
+                        .equals(Planets.forLevel(kepler).map(Planet::structures)),
+                "the level wasn't built with its planet's lists");
+        helper.succeed();
+    }
+
+    /**
+     * A {@code /reload} can't change a level's lists, so when a planet's file differs from the lists
+     * its level was built with, checking the planets says they apply at the next start.
+     */
+    @GameTest(template = "empty")
+    public static void changed_lists_wait_for_the_next_start(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        PlanetLoader.Result loaded = PlanetRegistry.server();
+        check(
+                PlanetLoader.checkWorld(loaded, server).stream()
+                        .noneMatch(p -> p.key().equals("structures_at_next_start")),
+                "the loaded planets already differ from their levels");
+        Map<ResourceLocation, Planet> changed = new java.util.HashMap<>();
+        for (Planet planet : loaded.planets().values()) {
+            changed.put(
+                    planet.id(),
+                    new Planet(
+                            planet.id(),
+                            planet.dimension(),
+                            planet.space(),
+                            planet.surface(),
+                            planet.atmosphere(),
+                            planet.gravity(),
+                            planet.ores(),
+                            planet.oreDensity(),
+                            planet.mobs(),
+                            PlanetStructures.DEFAULT,
+                            planet.access()));
+        }
+        PlanetLoader.Result reloaded = new PlanetLoader.Result(changed, loaded.files(), List.of(), loaded.read());
+        List<PlanetProblem> problems = PlanetLoader.checkWorld(reloaded, server);
+        check(
+                problems.stream()
+                        .anyMatch(p -> p.key().equals("structures_at_next_start")
+                                && p.field().equals("structures")),
+                "no warning that the lists apply at the next start: " + problems);
+        helper.succeed();
     }
 
     /**
