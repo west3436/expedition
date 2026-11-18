@@ -92,8 +92,8 @@ public sealed interface Obstacle {
     }
 
     /**
-     * The move as a whole: it is {@link MoveRefusal#TOO_LARGE}, {@link MoveRefusal#HOP_TOO_LARGE} or
-     * {@link MoveRefusal#BUSY}, or one of {@link MoveSettings#checks()} refused it.
+     * The move as a whole: it is {@link MoveRefusal#TOO_LARGE}, {@link MoveRefusal#HOP_TOO_LARGE},
+     * {@link MoveRefusal#BUSY} or {@link MoveRefusal#OUTSIDE_BORDER}, or one of {@link MoveSettings#checks()} refused it.
      *
      * @param code why
      */

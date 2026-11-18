@@ -1,12 +1,19 @@
 package io.github.west3436.expedition;
 
+import io.github.west3436.expedition.api.planet.SpaceSquare;
 import io.github.west3436.expedition.mover.ShipCeiling;
 import io.github.west3436.expedition.mover.ShipMover;
+import io.github.west3436.expedition.planet.PlanetBorders;
+import java.util.List;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
- * Expedition's server settings, in {@code serverconfig/expedition-server.toml} of each world. They
- * apply on the next move after the file is reloaded, with no restart.
+ * Expedition's server settings, in {@code serverconfig/expedition-server.toml} of each world. The
+ * ship settings apply on the next move after the file is reloaded, with no restart.
+ *
+ * <p>The {@code planets.border} section bounds planets ({@link PlanetBorders}). It is off by
+ * default, and applies when the server starts and whenever the file is reloaded.
  *
  * <p>The {@code ships} section is the server's ceiling on a ship's box ({@link ShipMover#ceiling()}).
  * It is a technical limit, not a game rule: ship size has no gameplay cap, since thrust against mass
@@ -65,6 +72,41 @@ public final class ExpeditionConfig {
 
     static {
         BUILDER.pop();
+        BUILDER.comment("Planets on this server.").translation(KEY + "planets").push("planets");
+        BUILDER.comment(
+                        "World borders at each planet's edge, with chunks far past them left empty. Off by default.",
+                        "The border follows the planet file: centred on surface.center, space.size blocks a side.",
+                        "These apply when the server starts and when this file is reloaded. Chunks already",
+                        "generated are never changed; only chunks generated afterwards are left empty.")
+                .translation(KEY + "border")
+                .push("border");
+    }
+
+    /** Whether planets get world borders and a void past them. */
+    public static final ModConfigSpec.BooleanValue BORDER_ENABLED = BUILDER.comment(
+                    "Give every planet a world border at its square's edge, and leave chunks far past it empty.")
+            .translation(KEY + "borderEnabled")
+            .define("enabled", false);
+
+    /** How many blocks of terrain generate past a planet's border. */
+    public static final ModConfigSpec.IntValue VOID_MARGIN = BUILDER.comment(
+                    "Blocks of terrain kept past the border. Chunks wholly beyond are left empty, so terrain",
+                    "runs on to the next chunk edge. -1 keeps terrain everywhere.")
+            .translation(KEY + "voidMargin")
+            .defineInRange("voidMargin", 200, -1, SpaceSquare.LIMIT);
+
+    /** The planets, by dimension id, left unbounded. */
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> BORDER_EXCLUDE = BUILDER.comment(
+                    "Planets (dimension ids) left unbounded even when enabled, such as [\"minecraft:overworld\"].")
+            .translation(KEY + "exclude")
+            .defineListAllowEmpty(
+                    "exclude",
+                    List.of(),
+                    () -> "minecraft:overworld",
+                    entry -> entry instanceof String id && ResourceLocation.tryParse(id) != null);
+
+    static {
+        BUILDER.pop(2);
     }
 
     /** The server settings' spec, registered as the mod's {@code SERVER} config. */

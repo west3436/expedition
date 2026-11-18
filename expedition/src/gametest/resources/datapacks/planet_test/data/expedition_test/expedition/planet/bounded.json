@@ -1,0 +1,5 @@
+{
+  "dimension": "expedition_test:bounded",
+  "space": { "center": [0, 20000], "size": 512 },
+  "surface": { "center": [1000, 8] }
+}
