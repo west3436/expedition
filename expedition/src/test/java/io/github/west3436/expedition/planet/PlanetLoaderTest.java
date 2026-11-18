@@ -1,6 +1,7 @@
 package io.github.west3436.expedition.planet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.google.gson.JsonParser;
 import io.github.west3436.expedition.api.planet.Planet;
@@ -153,5 +154,42 @@ class PlanetLoaderTest {
         PlanetsPayload.STREAM_CODEC.encode(buf, new PlanetsPayload(planets));
         assertEquals(planets, PlanetsPayload.STREAM_CODEC.decode(buf).planets());
         assertEquals(0, buf.readableBytes());
+    }
+
+    @Test
+    void aGasTheServerDoesntHaveFailsItsPlanet() {
+        String air = "{ \"dimension\": \"test:%s\", \"space\": { \"center\": [%d, 0] }, \"atmosphere\":"
+                + " { \"partial_pressures\": { \"zas:methane\": 6, \"%s\": 1 }, \"temperature\": 200 } }";
+        PlanetLoader.Result loaded = load(
+                PlanetLoader.Source.of(
+                        ResourceLocation.fromNamespaceAndPath("test", "kepler"),
+                        "kepler",
+                        JsonParser.parseString(String.format(Locale.ROOT, air, "kepler", 0, "zas:unobtainium"))),
+                PlanetLoader.Source.of(
+                        ResourceLocation.fromNamespaceAndPath("test", "venus"),
+                        "venus",
+                        JsonParser.parseString(String.format(Locale.ROOT, air, "venus", 20000, "zas:nitrogen"))),
+                file("moon", "test:moon", 40000, 0, 512, "test:kepler"),
+                file("rock", 60000, 0));
+        assertEquals(List.of("kepler", "moon", "rock", "venus"), loaded(loaded), "before the gases are known");
+
+        PlanetLoader.Result checked =
+                PlanetLoader.checkGases(loaded, gas -> !gas.getPath().equals("unobtainium"));
+        assertEquals(
+                List.of(
+                        "kepler atmosphere.partial_pressures.zas:unobtainium unknown_gas",
+                        "moon space.parent unknown_parent"),
+                problems(checked));
+        assertEquals(List.of("rock", "venus"), loaded(checked));
+        assertEquals(
+                List.of("rock", "venus"),
+                checked.files().keySet().stream()
+                        .map(ResourceLocation::getPath)
+                        .sorted()
+                        .toList());
+        assertEquals(PlanetProblem.Severity.ERROR, checked.problems().getFirst().severity());
+
+        PlanetLoader.Result known = PlanetLoader.checkGases(checked, gas -> true);
+        assertSame(checked, known, "nothing to fail");
     }
 }

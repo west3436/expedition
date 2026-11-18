@@ -45,6 +45,9 @@ public final class PlanetGravityTests {
 
     private static final double EPSILON = 1e-9;
 
+    /** Long enough for a forced chunk to come to entity ticking on a busy GameTest server. */
+    private static final int TIMEOUT = 600;
+
     private static final ResourceKey<Level> GENERATED = ResourceKey.create(
             Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(TestDimensions.NAMESPACE, "generated"));
 
@@ -57,7 +60,7 @@ public final class PlanetGravityTests {
      * 3 / 0.38 and a fall damage multiplier of 0.38. Sent to the Overworld, it arrives without them,
      * and the one it left behind has lost them too.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", timeoutTicks = TIMEOUT)
     public static void a_mob_on_a_planet_carries_its_gravity_and_loses_it_on_leaving(GameTestHelper h) {
         ServerLevel kepler = level(h, TestDimensions.KEPLER);
         Pig pig = pigIn(h, kepler, 0);
@@ -124,7 +127,7 @@ public final class PlanetGravityTests {
      * kepler that lost them gets them back, and one in the Overworld that wrongly had them loses
      * them.
      */
-    @GameTest(template = "empty")
+    @GameTest(template = "empty", timeoutTicks = TIMEOUT)
     public static void a_reload_sets_the_gravity_again(GameTestHelper h) {
         ServerLevel kepler = level(h, TestDimensions.KEPLER);
         Pig onKepler = pigIn(h, kepler, 2);
@@ -175,7 +178,9 @@ public final class PlanetGravityTests {
         ChunkPos chunk = entity.chunkPosition();
         level.setChunkForced(chunk.x, chunk.z, true);
         h.startSequence()
-                .thenWaitUntil(() -> h.assertTrue(level.getEntity(entity.getUUID()) == entity, "not tracked yet"))
+                .thenWaitUntil(() -> h.assertTrue(
+                        level.getEntity(entity.getUUID()) == entity,
+                        entity + " isn't tracked yet (removed: " + entity.getRemovalReason() + ")"))
                 .thenExecute(() -> {
                     try {
                         checks.run();
