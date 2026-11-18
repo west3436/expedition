@@ -121,6 +121,8 @@ public final class MoverTests {
                 .thenWaitUntil(() -> {
                     hold(h, overworld, box(a));
                     hold(h, overworld, box(b));
+                    // The furnace has to go on smelting in the Nether long after it has emptied.
+                    force(nether, box(c), true);
                     hold(h, nether, box(c));
                 })
                 .thenExecute(() -> {
@@ -160,6 +162,7 @@ public final class MoverTests {
                     wipe(overworld, box(a));
                     wipe(overworld, box(b));
                     wipe(nether, box(c));
+                    force(nether, box(c), false);
                 })
                 .thenSucceed();
     }
@@ -457,6 +460,20 @@ public final class MoverTests {
                         level.areEntitiesLoaded(c.toLong()),
                         "entities aren't loaded yet in " + c + " of "
                                 + level.dimension().location());
+            }
+        }
+    }
+
+    /**
+     * Force-loads the chunks {@link #hold} holds around a box, or lets them go. A level with no player
+     * and no forced chunk stops ticking its entities and block entities 300 ticks after it empties,
+     * and region tickets don't count. The GameTest runner force-loads the chunks of each test's
+     * structure in the Overworld, so the Overworld keeps ticking, but nothing does in the Nether.
+     */
+    private static void force(ServerLevel level, BoundingBox box, boolean forced) {
+        for (int x = (box.minX() - 1) >> 4; x <= (box.maxX() + 1) >> 4; x++) {
+            for (int z = (box.minZ() - 1) >> 4; z <= (box.maxZ() + 1) >> 4; z++) {
+                level.setChunkForced(x, z, forced);
             }
         }
     }
