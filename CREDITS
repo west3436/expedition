@@ -76,7 +76,11 @@ path: expedition/src/main/resources/assets/expedition/models/item/shuttle_comput
 origin: original
 
 path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_front.png
-origin: original
+origin: vgstation13
+source: icons/obj/computer.dmi
+state: shuttle
+commit: e8a375269b9c16d7c62ed2c357c23e7bd2437ed3
+adapted: Redrawn at 16x16 in the sprite's palette: its screen, shuttle sign, status lines and keyboard, recomposed as a flat console face.
 
 path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_side.png
 origin: original
@@ -100,7 +104,11 @@ path: expedition/src/main/resources/assets/expedition/textures/block/gas_thruste
 origin: original
 
 path: expedition/src/main/resources/assets/expedition/textures/block/gas_thruster_side.png
-origin: original
+origin: vgstation13
+source: icons/turf/shuttle.dmi
+state: propulsion, bswall0
+commit: e8a375269b9c16d7c62ed2c357c23e7bd2437ed3
+adapted: The propulsion sprite (south) turned over and halved to 16x16, keeping the most contrasting pixel of each 2x2 block, on a housing in bswall0's colours.
 
 path: expedition/src/main/resources/assets/expedition/blockstates/composite_ship_hull.json
 origin: original
@@ -112,7 +120,11 @@ path: expedition/src/main/resources/assets/expedition/models/item/composite_ship
 origin: original
 
 path: expedition/src/main/resources/assets/expedition/textures/block/composite_ship_hull.png
-origin: original
+origin: vgstation13
+source: icons/turf/shuttle.dmi
+state: swall0
+commit: e8a375269b9c16d7c62ed2c357c23e7bd2437ed3
+adapted: Redrawn at 16x16: the tile's outline, riveted band, bevel and panel cross, in its own colours.
 
 path: expedition/src/main/resources/assets/expedition/blockstates/ship_hull.json
 origin: original
@@ -124,4 +136,8 @@ path: expedition/src/main/resources/assets/expedition/models/item/ship_hull.json
 origin: original
 
 path: expedition/src/main/resources/assets/expedition/textures/block/ship_hull.png
-origin: original
+origin: vgstation13
+source: icons/turf/shuttle.dmi
+state: bswall0
+commit: e8a375269b9c16d7c62ed2c357c23e7bd2437ed3
+adapted: Redrawn at 16x16: the tile's outline, riveted band, bevel and panel cross, in its own colours.
