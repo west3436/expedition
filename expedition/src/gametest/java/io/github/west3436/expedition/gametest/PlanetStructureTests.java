@@ -45,8 +45,8 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  *   <li>The test planet's file, on {@code expedition_test:kepler}'s flat generator.
  *   <li>The {@code expedition_test:generated} planet's file, denying igloos, on {@code
  *       expedition:planet}.
- *   <li>The Nether, with vanilla's noise generator, denying bastions ({@link TestPlanetStructures}).
- *       Bastions and fortresses share one structure set, {@code minecraft:nether_complexes}, so this
+ *   <li>The Nether, with vanilla's noise generator, denying bastions: the {@code planet_test}
+ *       datapack replaces the mod's own planet file for the Nether with one that does. Bastions and fortresses share one structure set, {@code minecraft:nether_complexes}, so this
  *       also checks that one structure can go while the rest of its set stays.
  * </ul>
  *

@@ -1,4 +1,5 @@
 {
+  "dimension.expedition.moon": "The Moon",
   "expedition.command.move.build_height": "The box would leave the build height of %s.",
   "expedition.command.move.chunk_coordinates": "chunk %s, %s",
   "expedition.command.move.dry_run.clear": "Dry run: the move would go ahead, carrying %s blocks and %s block entities, mass %s. Nothing was changed.",

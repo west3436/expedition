@@ -76,7 +76,7 @@ public final class PlanetBorderTests {
         check(
                 overworld.getCenterX() == 0 && overworld.getSize() == WorldBorder.DEFAULT_SETTINGS.getSize(),
                 "the Overworld's border moved: " + overworld.getCenterX() + ", " + overworld.getSize());
-        check(!PlanetBorders.isDetached(Level.NETHER), "the Nether, no planet, was detached");
+        check(!PlanetBorders.isDetached(Level.NETHER), "the Nether, excluded, was detached");
         check(!PlanetBorders.isDetached(TestDimensions.KEPLER), "kepler, excluded, was detached");
         helper.succeed();
     }

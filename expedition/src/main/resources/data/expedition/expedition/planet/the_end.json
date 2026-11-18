@@ -1,0 +1,6 @@
+{
+  "dimension": "minecraft:the_end",
+  "space": { "center": [0, 300000], "size": 8192, "image": "expedition:textures/planet/the_end.png" },
+  "surface": { "center": [0, 0] },
+  "access": { "hidden_until_scanned": true }
+}
