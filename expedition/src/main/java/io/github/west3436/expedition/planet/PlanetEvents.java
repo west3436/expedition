@@ -61,6 +61,7 @@ public final class PlanetEvents {
 
     private static void onServerStopped(ServerStoppedEvent event) {
         PlanetRegistry.setServer(PlanetLoader.Result.EMPTY);
+        StructureFilter.clearApplied();
     }
 
     private static void checkWorld(MinecraftServer server) {
