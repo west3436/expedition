@@ -21,7 +21,9 @@ import net.neoforged.neoforge.event.AddPackFindersEvent;
  *   <li>{@code planet_test} holds the test planet, {@code expedition_test:kepler}: a datapack-only
  *       dimension of that id ({@code data/expedition_test/dimension/kepler.json}) and its planet
  *       file ({@code data/expedition_test/expedition/planet/kepler.json}). {@link TestDimensions}
- *       makes the dimension a level on the GameTest server.
+ *       makes the dimension a level on the GameTest server. It also holds {@code
+ *       expedition_test:generated}, a planet whose dimension is made by {@code expedition:planet},
+ *       with its biome and planet file.
  * </ul>
  */
 @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
