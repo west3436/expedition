@@ -16,7 +16,8 @@ import net.minecraft.resources.ResourceLocation;
  * @param centerZ the Z coordinate in Space of the square's centre
  * @param size how many blocks a side the square is, from {@link #MIN_SIZE} to {@link #MAX_SIZE}
  * @param image the texture that draws the planet in Space, if it names one, such as {@code
- *     mypack:textures/planet/kepler.png}
+ *     mypack:textures/planet/kepler.png}: a square image, which a client in Space over the square
+ *     sees lying flat far below, covering the square, with north at the image's top
  * @param parent the planet this one belongs to, if any, such as a moon's planet: the id of another
  *     planet file
  */
