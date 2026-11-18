@@ -27,6 +27,8 @@ final class BoxWalk {
     private final int stepY;
     private final int stepZ;
     private final boolean shellOnly;
+    private final long size;
+    private long walked;
     private int x;
     private int y;
     private int z;
@@ -38,6 +40,7 @@ final class BoxWalk {
         this.stepY = stepY;
         this.stepZ = stepZ;
         this.shellOnly = shellOnly;
+        this.size = size(box, shellOnly);
         this.x = stepX > 0 ? box.minX() : box.maxX();
         this.y = stepY > 0 ? box.minY() : box.maxY();
         this.z = stepZ > 0 ? box.minZ() : box.maxZ();
@@ -103,6 +106,15 @@ final class BoxWalk {
     }
 
     /**
+     * How many positions are left.
+     *
+     * @return the positions not yet given
+     */
+    long remaining() {
+        return size - walked;
+    }
+
+    /**
      * The next position.
      *
      * @param out where to put it
@@ -114,6 +126,7 @@ final class BoxWalk {
             throw new NoSuchElementException();
         }
         out.set(x, y, z);
+        walked++;
         advance();
         return out;
     }

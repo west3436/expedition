@@ -38,7 +38,9 @@ import net.minecraft.world.phys.Vec3;
  *       nothing is lost or made twice whatever the world does between ticks. In the first tick, each
  *       entity that hangs on a block (an item frame, a painting, a leash knot) goes first, with the
  *       positions it hangs on, so that it is never left without them. When the last position is
- *       carried, in the same tick, the other entities follow and the hand-over completes.
+ *       carried, in the same tick, the other entities follow and the hand-over completes. That last
+ *       tick starts fresh and carries only a short slice, a {@link #LAST_TICK_SHARE share} of the
+ *       budget, so the entities and the hand-over fit in what is left.
  *   <li><b>Settling:</b> position by position over the faces of both boxes, the neighbours hear of
  *       the change ({@link QuietBlocks#settle}).
  * </ol>
@@ -46,6 +48,13 @@ import net.minecraft.world.phys.Vec3;
  * <p>Both ends' chunks, and the chunks a block beyond them, are held loaded for the whole move.
  */
 public final class MoveJob {
+    /**
+     * The last tick of carrying spends no more than this share of a tick's budget (a quarter) on its
+     * slice of positions, leaving the rest for the entities and the hand-over's completion, which
+     * follow in the same tick (#70).
+     */
+    private static final int LAST_TICK_SHARE = 4;
+
     /** Holds a move's chunks loaded; its value is the job's number, so two moves never share one. */
     private static final TicketType<Long> MOVING = TicketType.create("expedition_move", Long::compare);
 
@@ -293,12 +302,27 @@ public final class MoveJob {
                 carryAttached(budget);
             }
         }
-        while (carry.hasNext() && (oneTick || !budget.spent(start))) {
-            BlockPos pos = carry.next(at);
-            if (carriedFirst.isEmpty() || !carriedFirst.contains(pos)) {
-                carryOne(budget, pos);
-            } else {
-                budget.spend(MoveSettings.POSITION);
+        if (oneTick) {
+            while (carry.hasNext()) {
+                step(budget);
+            }
+        } else if (carry.remaining() <= lastSlice()) {
+            // The last tick: the slice may spend a share of the budget, and the rest is left for the
+            // entities and the hand-over's completion, which follow it in this tick and can't be
+            // cut short. If the slice doesn't fit, the next tick carries on with it.
+            TickBudget slice = new TickBudget(
+                    Math.max(1, settings.workPerTick() / LAST_TICK_SHARE),
+                    Math.max(1, settings.nanosPerTick() / LAST_TICK_SHARE),
+                    budget);
+            while (carry.hasNext() && !slice.spent(start)) {
+                step(slice);
+            }
+        } else {
+            while (carry.hasNext() && !budget.spent(start)) {
+                if (carry.remaining() <= lastSlice()) {
+                    return; // the last slice starts a tick of its own
+                }
+                step(budget);
             }
         }
         if (carry.hasNext()) {
@@ -309,6 +333,25 @@ public final class MoveJob {
         ticket.complete(request.to(), offset);
         shell = BoxWalk.shell(request.box());
         phase = Phase.SETTLING;
+    }
+
+    /** Carries the walk's next position, unless it went first with an entity that hangs on it. */
+    private void step(TickBudget budget) {
+        BlockPos pos = carry.next(at);
+        if (carriedFirst.isEmpty() || !carriedFirst.contains(pos)) {
+            carryOne(budget, pos);
+        } else {
+            budget.spend(MoveSettings.POSITION);
+        }
+    }
+
+    /**
+     * How many positions the last tick of carrying may hold: as many as a {@link #LAST_TICK_SHARE
+     * share} of the work budget carries, if every one is a block. The positions before them are
+     * carried in the ticks before.
+     */
+    private long lastSlice() {
+        return Math.max(1, settings.workPerTick() / LAST_TICK_SHARE / (MoveSettings.POSITION + MoveSettings.BLOCK));
     }
 
     private void carryOne(TickBudget budget, BlockPos pos) {

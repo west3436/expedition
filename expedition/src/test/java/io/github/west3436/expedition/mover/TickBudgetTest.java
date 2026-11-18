@@ -41,6 +41,21 @@ class TickBudgetTest {
     }
 
     @Test
+    void costlyStepsReadTheClockSooner() {
+        TickBudget budget = new TickBudget(Integer.MAX_VALUE, 1, null);
+        long longAgo = System.nanoTime() - 1_000_000_000L;
+        // A step worth a block entity's carrying reads the clock within a few steps (#70).
+        boolean spent = false;
+        int steps = 0;
+        while (!spent) {
+            budget.spend(MoveSettings.BLOCK_ENTITY);
+            spent = budget.spent(longAgo);
+            steps++;
+        }
+        assertTrue(steps <= 2, "read the clock after " + steps + " steps");
+    }
+
+    @Test
     void anInnerBudgetSpendsTheOuterOneAndStopsWithIt() {
         TickBudget server = new TickBudget(100, Long.MAX_VALUE / 2, null);
         TickBudget first = new TickBudget(60, Long.MAX_VALUE / 2, server);
