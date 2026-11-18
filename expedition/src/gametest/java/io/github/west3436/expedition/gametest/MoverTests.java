@@ -86,10 +86,16 @@ public final class MoverTests {
     private static final Vec3i SIZE = new Vec3i(5, 4, 5);
 
     /** A floor and a roof of 25 stone bricks each, 32 glass walls, a chest, a furnace and a torch. */
-    private static final int MASS = 25 + 25 + 32 + 3;
+    private static final int SOLID = 25 + 25 + 32 + 3;
 
     /** The solid blocks and the snow layer, which isn't solid. */
-    private static final int BLOCKS = MASS + 1;
+    private static final int BLOCKS = SOLID + 1;
+
+    /**
+     * What the ship weighs (#54): the stone bricks and the furnace 1 each, the glass and the chest
+     * half, the torch a tenth, and the snow layer nothing.
+     */
+    private static final double MASS = 50 + 32 * 0.5 + 1 + 0.5 + 0.1;
 
     private static final Vec3i CHEST = new Vec3i(1, 1, 1);
     private static final Vec3i FURNACE = new Vec3i(3, 1, 1);
@@ -132,7 +138,11 @@ public final class MoverTests {
                     wipe(nether, box(c));
                     run.pig = build(overworld, a);
                     ShipSurvey survey = ShipSurvey.of(overworld, box(a));
-                    h.assertTrue(survey.equals(new ShipSurvey(MASS, BLOCKS, 2)), "the survey says " + survey);
+                    h.assertTrue(
+                            Math.abs(survey.mass() - MASS) < 1e-9
+                                    && survey.blocks() == BLOCKS
+                                    && survey.blockEntities() == 2,
+                            "the survey says " + survey);
                     run.before = snapshot(overworld, a, run.pig);
                     batches[0] = LightChecks.batchesTaken();
                     run.job = ShipMover.start(MoveRequest.by(overworld, box(a), overworld, new Vec3i(100, 0, 0)));
@@ -598,7 +608,7 @@ public final class MoverTests {
     private static void assertCarriedAll(GameTestHelper h, MoveResult result) {
         h.assertTrue(result.moved(), "the move was refused: " + result.refusal());
         h.assertTrue(
-                result.mass() == MASS
+                Math.abs(result.mass() - MASS) < 1e-9
                         && result.blocks() == BLOCKS
                         && result.blockEntities() == 2
                         && result.entities() == 1

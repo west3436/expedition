@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "HCH",
+    "CMC",
+    "HCH"
+  ],
+  "key": {
+    "H": {
+      "item": "expedition:ship_hull"
+    },
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "M": {
+      "item": "minecraft:phantom_membrane"
+    }
+  },
+  "result": {
+    "id": "expedition:composite_ship_hull",
+    "count": 4
+  }
+}

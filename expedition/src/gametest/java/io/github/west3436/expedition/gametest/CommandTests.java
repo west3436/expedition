@@ -73,6 +73,9 @@ public final class CommandTests {
     /** What the ship is: 9 floor blocks and the chest, all solid, and the chest's block entity. */
     private static final int BLOCKS = 10;
 
+    /** What the ship weighs (#54), as the messages give it: the floor's 9 at 1 each, the chest 0.5. */
+    private static final String MASS = "9.5";
+
     private static final String KEY = "expedition.command.move.";
 
     private CommandTests() {}
@@ -108,7 +111,7 @@ public final class CommandTests {
                     TranslatableContents moved = chat.first(KEY + "moved");
                     // The blocks, block entities, entities and mass, in the message's order.
                     List<Object> counts = List.of(moved.getArgs()).subList(2, 6);
-                    h.assertTrue(counts.equals(List.of(BLOCKS, 1, 0, BLOCKS)), "the counts are " + counts);
+                    h.assertTrue(counts.equals(List.of(BLOCKS, 1, 0, MASS)), "the counts are " + counts);
                     h.assertTrue(((Integer) moved.getArgs()[6]) >= 1, "the ticks are " + moved.getArgs()[6]);
                     assertShip(h, nether, c);
                     for (BlockPos p : positions(box(a))) {
@@ -221,7 +224,7 @@ public final class CommandTests {
                     h.assertTrue(ran == 1, "the clear dry run returned " + ran);
                     TranslatableContents would = clear.first(KEY + "dry_run.clear");
                     h.assertTrue(
-                            would != null && List.of(would.getArgs()).equals(List.of(BLOCKS, 1, BLOCKS)),
+                            would != null && List.of(would.getArgs()).equals(List.of(BLOCKS, 1, MASS)),
                             "the clear dry run said " + clear);
                     h.assertTrue(blocks(level, a, b).equals(before), "the clear dry run changed something");
                     h.assertFalse(ShipMover.isMoving(level, a.offset(CHEST)), "the clear dry run started a move");

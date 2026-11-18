@@ -1,5 +1,7 @@
 {
+  "block.expedition.composite_ship_hull": "Composite Ship Hull",
   "block.expedition.gas_thruster": "Gas Thruster",
+  "block.expedition.ship_hull": "Ship Hull",
   "block.expedition.shuttle_computer": "Shuttle Computer",
   "dimension.expedition.moon": "The Moon",
   "expedition.command.move.build_height": "The box would leave the build height of %s.",
