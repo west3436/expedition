@@ -8,6 +8,7 @@
     "ChunkMapMixin",
     "ChunkStatusTasksMixin",
     "DelegateBorderChangeListenerAccessor",
+    "EntityGravityMixin",
     "PlayerListBorderListenerMixin",
     "PlayerListMixin",
     "WorldBorderAccessor"
