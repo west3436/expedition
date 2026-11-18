@@ -101,3 +101,18 @@ origin: original
 
 path: expedition/src/main/resources/assets/expedition/textures/block/gas_thruster_side.png
 origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/planet/moon.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/planet/overworld.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/planet/the_end.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/planet/the_nether.png
+origin: original
+
+path: expedition/src/gametest/resources/assets/expedition_test/textures/planet/kepler.png
+origin: original

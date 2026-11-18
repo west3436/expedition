@@ -1,6 +1,6 @@
 {
   "dimension": "expedition_test:kepler",
-  "space": { "center": [12000, -4000], "size": 4096 },
+  "space": { "center": [12000, -4000], "size": 4096, "image": "expedition_test:textures/planet/kepler.png" },
   "surface": { "center": [0, 0] },
   "atmosphere": {
     "partial_pressures": { "zas:methane": 6.0, "zas:nitrogen": 2.5 },
