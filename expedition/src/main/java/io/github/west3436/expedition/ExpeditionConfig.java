@@ -4,6 +4,7 @@ import io.github.west3436.expedition.api.planet.SpaceSquare;
 import io.github.west3436.expedition.mover.ShipCeiling;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.planet.PlanetBorders;
+import io.github.west3436.expedition.portal.PortalRules;
 import java.util.List;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -14,6 +15,9 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  *
  * <p>The {@code planets.border} section bounds planets ({@link PlanetBorders}). It is off by
  * default, and applies when the server starts and whenever the file is reloaded.
+ *
+ * <p>The {@code portals} section turns Nether and End portals off ({@link PortalRules}). Both are on
+ * by default, and a change applies at once.
  *
  * <p>The {@code ships} section is the server's ceiling on a ship's box ({@link ShipMover#ceiling()}).
  * It is a technical limit, not a game rule: ship size has no gameplay cap, since thrust against mass
@@ -107,6 +111,29 @@ public final class ExpeditionConfig {
 
     static {
         BUILDER.pop(2);
+        BUILDER.comment(
+                        "Nether and End portals. Both work as in vanilla by default. Turned off, a portal still lights,",
+                        "but entering it does nothing and a player is told why: a ship is the only way in. Only going",
+                        "in is stopped: leaving the Nether or the End by portal always works, as does the End's exit",
+                        "portal after the dragon, so nobody is stranded. Operators get no bypass.")
+                .translation(KEY + "portals")
+                .push("portals");
+    }
+
+    /** Whether a Nether portal takes anything into the Nether. */
+    public static final ModConfigSpec.BooleanValue NETHER_PORTALS = BUILDER.comment(
+                    "Whether a Nether portal takes anything into the Nether. Leaving the Nether by one always works.")
+            .translation(KEY + "netherPortals")
+            .define("nether", true);
+
+    /** Whether an End portal takes anything into the End. */
+    public static final ModConfigSpec.BooleanValue END_PORTALS = BUILDER.comment(
+                    "Whether an End portal takes anything into the End. Leaving the End by one always works.")
+            .translation(KEY + "endPortals")
+            .define("end", true);
+
+    static {
+        BUILDER.pop();
     }
 
     /** The server settings' spec, registered as the mod's {@code SERVER} config. */
@@ -116,7 +143,16 @@ public final class ExpeditionConfig {
     public static final ShipCeiling CEILING =
             ShipCeiling.of(() -> value(MAX_VOLUME), () -> value(MAX_LONGEST_SIDE), () -> value(MAX_HOP_VOLUME));
 
+    /** The portal settings, read at every portal trip. */
+    public static final PortalRules.Settings PORTALS =
+            new PortalRules.Settings(() -> flag(NETHER_PORTALS), () -> flag(END_PORTALS));
+
     private ExpeditionConfig() {}
+
+    /** A setting's value, or its default while no world's settings are loaded. */
+    private static boolean flag(ModConfigSpec.BooleanValue setting) {
+        return SPEC.isLoaded() ? setting.getAsBoolean() : setting.getDefault();
+    }
 
     /** A setting's value, or its default while no world's settings are loaded. */
     private static int value(ModConfigSpec.IntValue setting) {
