@@ -1,5 +1,6 @@
 package io.github.west3436.expedition.mover;
 
+import io.github.west3436.expedition.ship.BlockWeights;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -89,7 +90,7 @@ public final class MoveJob {
     private BoxWalk shell;
     private LevelChunk fromChunk;
     private LevelChunk toChunk;
-    private int mass;
+    private double mass;
     private int blocks;
     private int blockEntities;
     private int entities;
@@ -382,9 +383,7 @@ public final class MoveJob {
         }
         if (!state.isAir()) {
             blocks++;
-            if (ShipSurvey.isSolid(state)) {
-                mass++;
-            }
+            mass += BlockWeights.weight(state);
         }
     }
 

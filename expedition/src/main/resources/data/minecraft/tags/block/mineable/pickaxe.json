@@ -1,6 +1,8 @@
 {
   "values": [
     "expedition:shuttle_computer",
-    "expedition:gas_thruster"
+    "expedition:gas_thruster",
+    "expedition:ship_hull",
+    "expedition:composite_ship_hull"
   ]
 }

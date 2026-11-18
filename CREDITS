@@ -102,6 +102,30 @@ origin: original
 path: expedition/src/main/resources/assets/expedition/textures/block/gas_thruster_side.png
 origin: original
 
+path: expedition/src/main/resources/assets/expedition/blockstates/composite_ship_hull.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/models/block/composite_ship_hull.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/models/item/composite_ship_hull.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/block/composite_ship_hull.png
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/blockstates/ship_hull.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/models/block/ship_hull.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/models/item/ship_hull.json
+origin: original
+
+path: expedition/src/main/resources/assets/expedition/textures/block/ship_hull.png
+origin: original
+
 path: expedition/src/main/resources/assets/expedition/textures/planet/moon.png
 origin: original
 

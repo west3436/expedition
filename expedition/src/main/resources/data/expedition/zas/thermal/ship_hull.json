@@ -1,0 +1,7 @@
+{
+  "blocks": [
+    "expedition:ship_hull",
+    "expedition:composite_ship_hull"
+  ],
+  "transmittance": 0
+}
