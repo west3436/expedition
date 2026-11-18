@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "expedition:block/shuttle_computer_top",
+    "front": "expedition:block/shuttle_computer_front",
+    "side": "expedition:block/shuttle_computer_side"
+  }
+}
