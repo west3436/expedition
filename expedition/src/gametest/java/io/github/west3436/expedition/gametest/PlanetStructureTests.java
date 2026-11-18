@@ -8,6 +8,7 @@ import io.github.west3436.expedition.planet.PlanetLoader;
 import io.github.west3436.expedition.planet.PlanetProblem;
 import io.github.west3436.expedition.planet.PlanetRegistry;
 import io.github.west3436.expedition.planet.StructureFilter;
+import io.github.west3436.expedition.worldgen.PlanetChunkGenerator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,6 +19,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -31,15 +33,18 @@ import net.minecraft.world.level.levelgen.structure.BuiltinStructureSets;
 import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
- * A planet's structure lists, on two generators Expedition doesn't own:
+ * A planet's structure lists, on two generators Expedition doesn't own and on its own:
  *
  * <ul>
  *   <li>The test planet's file, on {@code expedition_test:kepler}'s flat generator.
+ *   <li>The {@code expedition_test:generated} planet's file, denying igloos, on {@code
+ *       expedition:planet}.
  *   <li>The Nether, with vanilla's noise generator, denying bastions ({@link TestPlanetStructures}).
  *       Bastions and fortresses share one structure set, {@code minecraft:nether_complexes}, so this
  *       also checks that one structure can go while the rest of its set stays.
@@ -51,6 +56,9 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder(ExpeditionMod.MOD_ID)
 @PrefixGameTestTemplate(false)
 public final class PlanetStructureTests {
+    private static final ResourceKey<Level> GENERATED = ResourceKey.create(
+            Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(TestDimensions.NAMESPACE, "generated"));
+
     private PlanetStructureTests() {}
 
     private static ServerLevel nether(GameTestHelper helper) {
@@ -132,6 +140,55 @@ public final class PlanetStructureTests {
                 StructureFilter.applied(TestDimensions.KEPLER)
                         .equals(Planets.forLevel(kepler).map(Planet::structures)),
                 "the level wasn't built with its planet's lists");
+        helper.succeed();
+    }
+
+    /**
+     * The {@code expedition_test:generated} planet, made by {@code expedition:planet}: its biome is
+     * tagged for igloos and the standard ruined portal, and its file denies igloos. The igloo set
+     * goes, the ruined portals stay, and at every igloo spot near the origin the generator makes an
+     * igloo somewhere with the vanilla state and nowhere with the planet's.
+     */
+    @GameTest(template = "empty", timeoutTicks = 400)
+    public static void lists_apply_on_the_planet_generator(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel().getServer().getLevel(GENERATED);
+        check(level != null, "no generated planet level");
+        ChunkGenerator generator = level.getChunkSource().getGenerator();
+        check(generator instanceof PlanetChunkGenerator, "the generated planet isn't made by expedition:planet");
+        ChunkGeneratorStructureState state = level.getChunkSource().getGeneratorState();
+        ChunkGeneratorStructureState vanilla = vanilla(level);
+        Map<String, List<String>> planet = contents(state);
+        Map<String, List<String>> control = contents(vanilla);
+        check(
+                control.keySet().equals(Set.of("minecraft:igloo", "minecraft:ruined_portal")),
+                "control: the generated planet's sets are " + control);
+        Map<String, List<String>> expected = new TreeMap<>(control);
+        expected.remove("minecraft:igloo");
+        check(planet.equals(expected), "the planet's sets are " + planet + ", not " + expected);
+        check(
+                StructureFilter.applied(GENERATED)
+                        .equals(Planets.forLevel(level).map(Planet::structures)),
+                "the level wasn't built with its planet's lists");
+
+        Structure igloo =
+                level.registryAccess().registryOrThrow(Registries.STRUCTURE).getOrThrow(BuiltinStructures.IGLOO);
+        RandomSpreadStructurePlacement placement = (RandomSpreadStructurePlacement) level.registryAccess()
+                .registryOrThrow(Registries.STRUCTURE_SET)
+                .getOrThrow(BuiltinStructureSets.IGLOOS)
+                .placement();
+        int planetIgloos = 0;
+        int controlIgloos = 0;
+        int spacing = placement.spacing();
+        for (int x = -4; x <= 4; x++) {
+            for (int z = -4; z <= 4; z++) {
+                ChunkPos spot = placement.getPotentialStructureChunk(level.getSeed(), x * spacing, z * spacing);
+                planetIgloos += starts(level, generator, state, spot).containsKey(igloo) ? 1 : 0;
+                controlIgloos += starts(level, generator, vanilla, spot).containsKey(igloo) ? 1 : 0;
+            }
+        }
+        String counts = "igloos: " + planetIgloos + " on the planet, " + controlIgloos + " in vanilla";
+        check(controlIgloos > 0, "control: vanilla made no igloos; " + counts);
+        check(planetIgloos == 0, "igloos generated; " + counts);
         helper.succeed();
     }
 
@@ -253,15 +310,22 @@ public final class PlanetStructureTests {
             Structure fortress,
             Structure bastion,
             int[] counts) {
+        Map<Structure, StructureStart> starts = starts(level, generator, state, spot);
+        if (starts.containsKey(fortress)) {
+            counts[0]++;
+        }
+        if (starts.containsKey(bastion)) {
+            counts[1]++;
+        }
+    }
+
+    /** The structure starts the generator makes in a throwaway chunk at a spot. */
+    private static Map<Structure, StructureStart> starts(
+            ServerLevel level, ChunkGenerator generator, ChunkGeneratorStructureState state, ChunkPos spot) {
         ProtoChunk chunk = new ProtoChunk(
                 spot, UpgradeData.EMPTY, level, level.registryAccess().registryOrThrow(Registries.BIOME), null);
         generator.createStructures(
                 level.registryAccess(), state, level.structureManager(), chunk, level.getStructureManager());
-        if (chunk.getAllStarts().containsKey(fortress)) {
-            counts[0]++;
-        }
-        if (chunk.getAllStarts().containsKey(bastion)) {
-            counts[1]++;
-        }
+        return chunk.getAllStarts();
     }
 }
