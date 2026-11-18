@@ -32,8 +32,14 @@
   "expedition.configuration.maxOverlappingHopVolume.tooltip": "The most blocks a ship's box may hold for a short hop, a move onto part of its own space. Such a hop is done in one server tick: a full 16×16×16 box costs that tick about 6–10 ms, and every 4,096 blocks more adds about as much.",
   "expedition.configuration.maxVolume": "Largest ship volume",
   "expedition.configuration.maxVolume.tooltip": "The most blocks a ship's box may hold, air included. The default, 131,072, is 64×64×32: a full ship that size takes about 3 s a trip. 64×64×64 works, but takes about 6 s a trip and can bring lag spikes on a small heap.",
+  "expedition.configuration.endPortals": "End portals",
+  "expedition.configuration.endPortals.tooltip": "Whether an End portal takes anything into the End. Off, the portal does nothing going in, and a ship is the only way there. Leaving the End by portal always works.",
+  "expedition.configuration.netherPortals": "Nether portals",
+  "expedition.configuration.netherPortals.tooltip": "Whether a Nether portal takes anything into the Nether. Off, the portal still lights but does nothing going in, and a ship is the only way there. Leaving the Nether by portal always works.",
   "expedition.configuration.planets": "Planets",
   "expedition.configuration.planets.tooltip": "Planets on this server.",
+  "expedition.configuration.portals": "Portals",
+  "expedition.configuration.portals.tooltip": "Nether and End portals. Both work as in vanilla by default. Turned off, entering one does nothing; leaving the Nether or the End by portal always works.",
   "expedition.configuration.ships": "Ship ceiling",
   "expedition.configuration.ships.tooltip": "The server's ceiling on a ship's box. This is a technical limit, not a game rule: it keeps one move from stalling the server. Raising it makes the largest moves longer and heavier on memory.",
   "expedition.configuration.voidMargin": "Terrain past the border",
@@ -100,5 +106,7 @@
   "expedition.planet.problem.unknown_structure": "%s isn't a structure or a structure set",
   "expedition.planet.problem.unknown_structure_tag": "%s isn't a structure tag or a structure-set tag",
   "expedition.planet.problem_at_field": "%s: %s: %s",
-  "expedition.planet.problem_in_file": "%s: %s"
+  "expedition.planet.problem_in_file": "%s: %s",
+  "expedition.portal.end_off": "End portals are turned off on this server: only a ship can reach the End.",
+  "expedition.portal.nether_off": "Nether portals are turned off on this server: only a ship can reach the Nether."
 }

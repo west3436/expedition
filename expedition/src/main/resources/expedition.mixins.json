@@ -12,6 +12,7 @@
     "NaturalSpawnerMixin",
     "PlayerListBorderListenerMixin",
     "PlayerListMixin",
+    "PortalDestinationMixin",
     "WorldBorderAccessor"
   ],
   "injectors": {
