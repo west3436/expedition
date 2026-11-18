@@ -2,6 +2,7 @@ package io.github.west3436.expedition.api.planet;
 
 import io.github.west3436.expedition.api.ExpeditionApi;
 import io.github.west3436.expedition.api.space.Space;
+import io.github.west3436.expedition.api.space.Transit;
 import java.util.Objects;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -10,8 +11,9 @@ import net.neoforged.fml.LogicalSide;
 
 /**
  * A level's gravity: its planet's {@link Planet#gravity() gravity}, a multiple of the Overworld's,
- * {@link Space#GRAVITY} in {@linkplain Space Space}, or 1 anywhere else. It works without any
- * other mod, and a mod with its own gravity, such as a gravity generator, can build on it.
+ * {@link Space#GRAVITY} in {@linkplain Space Space} and the {@linkplain Transit transit dimension},
+ * or 1 anywhere else. It works without any other mod, and a mod with its own gravity, such as a
+ * gravity generator, can build on it.
  *
  * <p>How Expedition applies it:
  *
@@ -46,11 +48,11 @@ public final class PlanetGravity {
      * The gravity in a level.
      *
      * @param level a server or client level
-     * @return its planet's gravity, from the level's own side; {@link Space#GRAVITY} in Space; or
-     *     {@link #NORMAL} anywhere else
+     * @return its planet's gravity, from the level's own side; {@link Space#GRAVITY} in Space and
+     *     in transit; or {@link #NORMAL} anywhere else
      */
     public static double of(Level level) {
-        if (Space.is(Objects.requireNonNull(level, "level"))) {
+        if (Space.is(Objects.requireNonNull(level, "level")) || Transit.is(level)) {
             return Space.GRAVITY;
         }
         return Planets.forLevel(level).map(Planet::gravity).orElse(NORMAL);
@@ -61,11 +63,11 @@ public final class PlanetGravity {
      *
      * @param dimension the dimension
      * @param side the side whose planets to look in
-     * @return its planet's gravity; {@link Space#GRAVITY} in Space; or {@link #NORMAL} anywhere
-     *     else
+     * @return its planet's gravity; {@link Space#GRAVITY} in Space and in transit; or {@link
+     *     #NORMAL} anywhere else
      */
     public static double of(ResourceKey<Level> dimension, LogicalSide side) {
-        if (Space.is(dimension)) {
+        if (Space.is(dimension) || Transit.is(dimension)) {
             return Space.GRAVITY;
         }
         return Planets.forDimension(dimension, side).map(Planet::gravity).orElse(NORMAL);
