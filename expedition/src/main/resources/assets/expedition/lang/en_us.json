@@ -61,11 +61,13 @@
   "expedition.move.refusal.no_drive": "The ship has no drive with an open nozzle.",
   "expedition.move.refusal.no_fuel": "The tanks hold less fuel than the trip burns. Fly slower, or fill up.",
   "expedition.move.refusal.out_of_range": "The trip would take longer than this server allows. Fly faster, or somewhere closer.",
+  "expedition.move.refusal.no_destination": "The destination's dimension isn't on this server.",
   "expedition.move.refusal.outside_border": "The destination is outside the world border.",
   "expedition.move.refusal.server_stopping": "The server stopped before the move began.",
   "expedition.move.refusal.thrust_too_low": "The ship's thrust can't lift its weight here.",
   "expedition.move.refusal.thrust_too_low_to_land": "The ship's thrust couldn't hold up its weight at the destination, so it couldn't land.",
   "expedition.move.refusal.too_large": "The ship is larger than this server allows.",
+  "expedition.move.refusal.transit_too_tall": "The ship is taller than the transit dimension.",
   "expedition.move.refusal.unloaded": "Part of the ship or its destination isn't loaded.",
   "expedition.planet.problem.above": "is %s, but must be above %s",
   "expedition.planet.problem.air_required": "is needed unless vacuum is true",
@@ -108,5 +110,8 @@
   "expedition.planet.problem_at_field": "%s: %s: %s",
   "expedition.planet.problem_in_file": "%s: %s",
   "expedition.portal.end_off": "End portals are turned off on this server: only a ship can reach the End.",
-  "expedition.portal.nether_off": "Nether portals are turned off on this server: only a ship can reach the Nether."
+  "expedition.portal.in_transit": "Portals don't work in transit.",
+  "expedition.portal.nether_off": "Nether portals are turned off on this server: only a ship can reach the Nether.",
+  "expedition.transit.no_building": "Nothing can be built outside the ship in transit.",
+  "expedition.transit.stepped_outside": "You stepped outside the ship, into Space."
 }
