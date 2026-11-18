@@ -38,6 +38,33 @@ public final class MoveRefusal {
     /** The server stopped while the move waited for its hand-over. */
     public static final String SERVER_STOPPING = "server_stopping";
 
+    /**
+     * ZAS³ couldn't carry the cabin air: a zone in the box is paused, because part of it is in an
+     * unloaded chunk, or the dimension's simulation is paused ({@link ZasRelocationHandover}).
+     */
+    public static final String ATMOS_PAUSED = "atmos_paused";
+
+    /** ZAS³ couldn't carry the cabin air: a zone in the box is already being moved, by another mover. */
+    public static final String ATMOS_BUSY = "atmos_busy";
+
+    /**
+     * ZAS³ couldn't carry the cabin air: the zones in the box have more cells than it allows in one
+     * move ({@code [atmos] relocation_max_cells} in {@code zas-server.toml}).
+     */
+    public static final String ATMOS_TOO_LARGE = "atmos_too_large";
+
+    /** ZAS³ couldn't carry the cabin air: a chunk the box or a zone in it spans isn't loaded. */
+    public static final String ATMOS_UNLOADED = "atmos_unloaded";
+
+    /** ZAS³ couldn't carry the cabin air: its ticket timed out before the move began. */
+    public static final String ATMOS_TIMED_OUT = "atmos_timed_out";
+
+    /**
+     * ZAS³ couldn't carry the cabin air: its ticket was over before the move began, as when the
+     * dimension's simulation was rebuilt in between.
+     */
+    public static final String ATMOS_ENDED = "atmos_ended";
+
     /** What every code's translation key starts with. */
     public static final String KEY_PREFIX = "expedition.move.refusal.";
 

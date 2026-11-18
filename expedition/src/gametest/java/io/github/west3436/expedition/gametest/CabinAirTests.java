@@ -3,6 +3,7 @@ package io.github.west3436.expedition.gametest;
 import io.github.west3436.expedition.ExpeditionMod;
 import io.github.west3436.expedition.mover.MoveCheck;
 import io.github.west3436.expedition.mover.MoveJob;
+import io.github.west3436.expedition.mover.MoveRefusal;
 import io.github.west3436.expedition.mover.MoveRequest;
 import io.github.west3436.expedition.mover.MoveResult;
 import io.github.west3436.expedition.mover.MoveSettings;
@@ -205,7 +206,8 @@ public final class CabinAirTests {
                 .thenWaitUntil(() -> h.assertTrue(run.job.isDone(), "the busy move is still going"))
                 .thenExecute(() -> {
                     Optional<String> refusal = run.job.result().join().refusal();
-                    h.assertTrue(refusal.equals(Optional.of("atmos_busy")), "the move's refusal was " + refusal);
+                    h.assertTrue(
+                            refusal.equals(Optional.of(MoveRefusal.ATMOS_BUSY)), "the move's refusal was " + refusal);
                     released[0] = Relocations.cancel(other[0]);
                 })
                 .thenWaitUntil(() -> h.assertTrue(released[0].isDone(), "the other mover's cancel is pending"))
@@ -237,6 +239,7 @@ public final class CabinAirTests {
                     hold(h, overworld, box(b));
                 })
                 .thenExecute(() -> {
+                    wipe(overworld, box(b));
                     build(overworld, a);
                     BoundingBox box = box(dock);
                     for (BlockPos p : BlockPos.betweenClosed(
@@ -347,6 +350,8 @@ public final class CabinAirTests {
                     hold(h, to, box(b));
                 })
                 .thenExecute(() -> {
+                    // A clear destination, so the mover's own check for blocks in the way passes.
+                    wipe(to, box(b));
                     build(from, a);
                     run.fill = seed(from, a);
                 })

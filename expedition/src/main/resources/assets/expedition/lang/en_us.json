@@ -1,4 +1,10 @@
 {
+  "expedition.move.refusal.atmos_busy": "The air inside is already being moved by something else.",
+  "expedition.move.refusal.atmos_ended": "The atmosphere simulation dropped the move before it began; try again.",
+  "expedition.move.refusal.atmos_paused": "The air inside is paused, because part of it isn't loaded.",
+  "expedition.move.refusal.atmos_timed_out": "The atmosphere simulation timed out before the move began; try again.",
+  "expedition.move.refusal.atmos_too_large": "The rooms inside hold more air than this server can move at once.",
+  "expedition.move.refusal.atmos_unloaded": "Part of the air inside isn't loaded.",
   "expedition.move.refusal.blocked": "Something is in the way at the destination.",
   "expedition.move.refusal.busy": "Part of this space is already being moved.",
   "expedition.move.refusal.handover_failed": "The move couldn't be handed over to the atmosphere simulation.",

@@ -26,22 +26,26 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * move waits up to about a second before its first block moves.
  *
  * <p><b>Refusal codes.</b> A begin ZAS³ refuses refuses the move whole, with nothing changed. The
- * code is {@code atmos_} and the outcome's name in lower case:
+ * code is {@code atmos_} and the outcome's name in lower case, each one in {@link MoveRefusal} with a
+ * message in {@code en_us.json}:
  *
  * <ul>
- *   <li>{@code atmos_paused}: a zone in the box is paused, because part of it is in an unloaded
- *       chunk, or the dimension's simulation is paused;
- *   <li>{@code atmos_busy}: a zone in the box is already being moved, by another mover;
- *   <li>{@code atmos_too_large}: the zones in the box have more cells than ZAS³ allows in one move
- *       ({@code [atmos] relocation_max_cells}, 102,400 by default);
- *   <li>{@code atmos_unloaded}: a chunk the box or a zone in it spans isn't loaded;
- *   <li>{@code atmos_timed_out}, {@code atmos_ended}: the ticket was over before it began, as when the
- *       simulation was rebuilt in between.
+ *   <li>{@link MoveRefusal#ATMOS_PAUSED atmos_paused}: a zone in the box is paused, because part of
+ *       it is in an unloaded chunk, or the dimension's simulation is paused;
+ *   <li>{@link MoveRefusal#ATMOS_BUSY atmos_busy}: a zone in the box is already being moved, by
+ *       another mover;
+ *   <li>{@link MoveRefusal#ATMOS_TOO_LARGE atmos_too_large}: the zones in the box have more cells
+ *       than ZAS³ allows in one move ({@code [atmos] relocation_max_cells}, 102,400 by default);
+ *   <li>{@link MoveRefusal#ATMOS_UNLOADED atmos_unloaded}: a chunk the box or a zone in it spans
+ *       isn't loaded;
+ *   <li>{@link MoveRefusal#ATMOS_TIMED_OUT atmos_timed_out}, {@link MoveRefusal#ATMOS_ENDED
+ *       atmos_ended}: the ticket was over before it began, as when the simulation was rebuilt in
+ *       between.
  * </ul>
  *
  * <p>{@code BEGUN} lets the move go ahead, and so does {@code ABSENT}, which ZAS³'s API answers when
- * ZAS³ itself isn't running: there is no air to carry. A begin that fails outright is the mover's
- * {@code handover_failed}.
+ * ZAS³ itself isn't running: there is no air to carry. An outcome a later ZAS³ adds gets a code by
+ * the same rule. A begin that fails outright is the mover's {@link MoveRefusal#HANDOVER_FAILED}.
  *
  * <p>ZAS³ cancels a ticket that isn't completed within {@code [atmos] relocation_timeout_seconds}
  * (30 by default). A move longer than that loses its cabin air to the ordinary block changes, and is
@@ -83,6 +87,13 @@ public final class ZasRelocationHandover implements RelocationHandover {
     public static Optional<String> refusal(RelocationOutcome outcome) {
         return switch (outcome) {
             case BEGUN, ABSENT -> Optional.empty();
+            case PAUSED -> Optional.of(MoveRefusal.ATMOS_PAUSED);
+            case BUSY -> Optional.of(MoveRefusal.ATMOS_BUSY);
+            case TOO_LARGE -> Optional.of(MoveRefusal.ATMOS_TOO_LARGE);
+            case UNLOADED -> Optional.of(MoveRefusal.ATMOS_UNLOADED);
+            case TIMED_OUT -> Optional.of(MoveRefusal.ATMOS_TIMED_OUT);
+            case ENDED -> Optional.of(MoveRefusal.ATMOS_ENDED);
+            // Never a begin's answer; and whatever a later ZAS³ adds.
             default -> Optional.of(REFUSAL_PREFIX + outcome.name().toLowerCase(Locale.ROOT));
         };
     }
