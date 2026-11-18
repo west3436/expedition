@@ -1,0 +1,9 @@
+{
+  "dimension": "expedition_test:crust",
+  "space": { "center": [-12000, -4000], "size": 2048 },
+  "ores": [
+    { "block": "minecraft:iron_ore", "weight": 40, "vein_size": 9, "y": [-32, 64] },
+    { "block": "minecraft:copper_ore", "weight": 20 }
+  ],
+  "ore_density": 1.5
+}
