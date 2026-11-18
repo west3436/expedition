@@ -317,6 +317,10 @@ public final class CabinAirTests {
                 request.box().minX(), request.box().minY(), request.box().minZ());
         BlockPos b = request.origin();
         Run run = new Run();
+        if (to != h.getLevel()) {
+            // The room's air has to settle in its new level, which may be one nobody keeps ticking.
+            force(to, box(b), true);
+        }
         prepare(h, run, from, a, to, b)
                 .thenExecute(() -> {
                     h.assertTrue(
@@ -359,6 +363,9 @@ public final class CabinAirTests {
                     noBreach(h, run, new Seen(from.dimension(), run.before.id()), new Seen(to.dimension(), after.id()));
                     wipe(from, box(a));
                     wipe(to, box(b));
+                    if (to != h.getLevel()) {
+                        force(to, box(b), false);
+                    }
                 })
                 .thenSucceed();
     }
@@ -500,6 +507,20 @@ public final class CabinAirTests {
                         level.areEntitiesLoaded(c.toLong()),
                         "entities aren't loaded yet in " + c + " of "
                                 + level.dimension().location());
+            }
+        }
+    }
+
+    /**
+     * Force-loads the chunks {@link #hold} holds around a box, or lets them go. A level with no player
+     * and no forced chunk stops ticking its entities and block entities 300 ticks after it empties,
+     * and region tickets don't count. The GameTest runner force-loads the chunks of each test's
+     * structure in the Overworld, so the Overworld keeps ticking, but nothing does in the Nether.
+     */
+    private static void force(ServerLevel level, BoundingBox box, boolean forced) {
+        for (int x = (box.minX() - 1) >> 4; x <= (box.maxX() + 1) >> 4; x++) {
+            for (int z = (box.minZ() - 1) >> 4; z <= (box.maxZ() + 1) >> 4; z++) {
+                level.setChunkForced(x, z, forced);
             }
         }
     }
