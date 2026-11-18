@@ -6,12 +6,21 @@ import io.github.west3436.expedition.api.planet.Planet;
 import io.github.west3436.expedition.api.planet.PlanetAtmosphere;
 import io.github.west3436.expedition.api.planet.PlanetGravity;
 import io.github.west3436.expedition.api.planet.Planets;
+import io.github.west3436.expedition.planet.NativeAir;
+import io.github.west3436.expedition.planet.PlanetAir;
+import io.github.west3436.expedition.planet.PlanetSpawns;
 import io.github.west3436.expedition.worldgen.PlanetChunkGenerator;
 import io.github.west3436.zas.api.atmosphere.AtmosphereSample;
 import io.github.west3436.zas.api.atmosphere.AtmosphereState;
 import io.github.west3436.zas.api.atmosphere.Atmospheres;
+import io.github.west3436.zas.api.event.HazardTickEvent;
+import io.github.west3436.zas.api.life.Hazard;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
@@ -21,15 +30,22 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.Pig;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.MobSpawnSettings.SpawnerData;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.fml.LogicalSide;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.slf4j.Logger;
@@ -204,6 +220,105 @@ public final class MilestoneGateTests {
         h.assertTrue(ratio > 2.2 && ratio < 4.0, "iron to copper is " + ratio + ", not about 3");
         h.assertValueEqual(other, 0, "ores the planet doesn't list");
         h.succeed();
+    }
+
+    /**
+     * It spawns its own mobs, as natural spawning asks for them (the biome's list, then NeoForge's
+     * potential-spawns event): strays as its monsters and goats as its creatures, each with the
+     * file's weight and group. The biome spawns nothing, so a category the file leaves out spawns
+     * nothing. Strays and goats are its natives; a pig isn't.
+     */
+    @GameTest(template = "empty", batch = BATCH)
+    public static void it_spawns_its_own_mobs(GameTestHelper h) {
+        ServerLevel example = example(h);
+        BlockPos pos = new BlockPos(8, 64, 8);
+
+        List<SpawnerData> monsters = PlanetMobTests.spawns(example, MobCategory.MONSTER, pos);
+        h.assertValueEqual(PlanetMobTests.types(monsters), List.of(EntityType.STRAY), "its monsters");
+        SpawnerData stray = monsters.getFirst();
+        h.assertTrue(
+                stray.getWeight().asInt() == 10 && stray.minCount == 1 && stray.maxCount == 2,
+                "the strays' weight and group");
+
+        List<SpawnerData> creatures = PlanetMobTests.spawns(example, MobCategory.CREATURE, pos);
+        h.assertValueEqual(PlanetMobTests.types(creatures), List.of(EntityType.GOAT), "its creatures");
+        SpawnerData goat = creatures.getFirst();
+        h.assertTrue(
+                goat.getWeight().asInt() == 5 && goat.minCount == 1 && goat.maxCount == 2,
+                "the goats' weight and group");
+
+        h.assertValueEqual(
+                PlanetMobTests.spawns(example, MobCategory.AMBIENT, pos), List.<SpawnerData>of(), "its ambient mobs");
+
+        h.assertTrue(PlanetSpawns.isNative(EXAMPLE, EntityType.STRAY), "the stray isn't the example's");
+        h.assertTrue(PlanetSpawns.isNative(EXAMPLE, EntityType.GOAT), "the goat isn't the example's");
+        h.assertFalse(PlanetSpawns.isNative(EXAMPLE, EntityType.PIG), "the pig is the example's");
+        h.succeed();
+    }
+
+    /**
+     * Its goat lives in its air and a pig beside it doesn't: ZAS³'s hazards harm the pig, and every
+     * one that comes to the goat is spared it, low pressure among them. Waits, as {@link
+     * PlanetMobTests} does, for the pig's first damage and a hazard to have reached the goat, and
+     * forces the chunk to entity-ticking first, since ZAS³ only checks entities that tick.
+     */
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = 1200)
+    public static void its_goat_lives_in_its_air_and_a_pig_doesnt(GameTestHelper h) {
+        ServerLevel example = example(h);
+        ChunkPos chunk = new ChunkPos(-4, -4);
+        h.assertTrue(PlanetAir.appliesTo(EXAMPLE), "the example's air isn't the planet's");
+
+        Map<LivingEntity, List<HazardTickEvent>> heard = new HashMap<>();
+        Consumer<HazardTickEvent> listener = e -> {
+            List<HazardTickEvent> mine = heard.get(e.entity());
+            if (mine != null) {
+                mine.add(e);
+            }
+        };
+        Mob[] mobs = new Mob[2];
+        h.startSequence()
+                .thenExecute(() -> example.setChunkForced(chunk.x, chunk.z, true))
+                .thenWaitUntil(() -> h.assertTrue(
+                        example.isPositionEntityTicking(chunk.getMiddleBlockPosition(64)),
+                        "the chunk isn't loaded yet"))
+                .thenExecute(() -> {
+                    mobs[0] = PlanetMobTests.place(
+                            h, example, EntityType.GOAT, chunk.getMinBlockX() + 4, chunk.getMinBlockZ() + 4);
+                    mobs[1] = PlanetMobTests.place(
+                            h, example, EntityType.PIG, chunk.getMinBlockX() + 11, chunk.getMinBlockZ() + 11);
+                    heard.put(mobs[0], new ArrayList<>());
+                    heard.put(mobs[1], new ArrayList<>());
+                    NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, true, HazardTickEvent.class, listener);
+                })
+                .thenWaitUntil(() -> {
+                    h.assertTrue(NativeAir.adapted(mobs[0]), "the goat isn't adapted to the example's air");
+                    h.assertFalse(NativeAir.adapted(mobs[1]), "a pig is adapted to the example's air");
+                    h.assertTrue(PlanetMobTests.lost(mobs[1]) > 0, "the pig isn't harmed yet");
+                    h.assertFalse(heard.get(mobs[0]).isEmpty(), "no hazard has come to the goat yet");
+                })
+                .thenExecute(() -> {
+                    try {
+                        List<HazardTickEvent> goat = heard.get(mobs[0]);
+                        List<HazardTickEvent> pig = heard.get(mobs[1]);
+                        h.assertTrue(
+                                goat.stream().allMatch(HazardTickEvent::isCanceled),
+                                "a hazard wasn't spared the goat: " + PlanetMobTests.hazards(goat));
+                        h.assertTrue(
+                                goat.stream().anyMatch(e -> e.hazard() == Hazard.LOW_PRESSURE),
+                                "the goat wasn't spared the low pressure: " + PlanetMobTests.hazards(goat));
+                        h.assertValueEqual(PlanetMobTests.lost(mobs[0]), 0f, "the goat's lost health");
+                        h.assertTrue(
+                                pig.stream().noneMatch(HazardTickEvent::isCanceled),
+                                "a hazard was spared the pig: " + PlanetMobTests.hazards(pig));
+                    } finally {
+                        NeoForge.EVENT_BUS.unregister(listener);
+                        for (Mob mob : mobs) {
+                            mob.discard();
+                        }
+                        example.setChunkForced(chunk.x, chunk.z, false);
+                    }
+                })
+                .thenSucceed();
     }
 
     // ---- Helpers ------------------------------------------------------------------------

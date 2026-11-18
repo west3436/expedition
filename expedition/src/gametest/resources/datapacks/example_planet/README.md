@@ -59,7 +59,7 @@ This file makes the dimension a planet. Only `dimension` and `space.center` are 
 | `ores` | iron 30, copper 10, coal 20 | What the crust holds, by weight: iron is placed three times as often as copper. `vein_size` (8 if left out) and a `y` range are optional. Coal here has veins of 12, only from y 0 to 80. |
 | `ore_density` | 2.0 | How many veins, as a multiple of the usual 16 a chunk. |
 | `mobs.replace_existing` | true | The planet's spawns replace the biome's rather than adding to them. |
-| `mobs.monster`, `mobs.creature` | strays; goats | What spawns, by vanilla mob category. Each entry has a `type`, a `weight` and a `group` size range. |
+| `mobs.monster`, `mobs.creature` | strays; goats | What spawns, by vanilla mob category. Each entry has a `type`, a `weight` and a `group` size range. A category left out keeps the biome's list. Every mob listed here is a native: in the planet's open air it takes no harm from the air (cold, thin or poisonous), and it can spawn where the air would kill anything else. Taken elsewhere, or into a sealed room, it suffers like any mob. |
 | `structures.deny` | `#minecraft:village` | Structures, or tags of them, that never generate here. `allow` lists the only ones that may. |
 | `access.hidden_until_scanned` | false | Whether the planet is hidden on the star map until scanned. |
 

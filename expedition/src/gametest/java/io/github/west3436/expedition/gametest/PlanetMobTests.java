@@ -287,7 +287,7 @@ public final class PlanetMobTests {
     }
 
     /** What a level's biome spawns of a category at a spot, before the event. */
-    private static List<SpawnerData> biomeList(ServerLevel level, MobCategory category, BlockPos pos) {
+    static List<SpawnerData> biomeList(ServerLevel level, MobCategory category, BlockPos pos) {
         return level.getChunkSource()
                 .getGenerator()
                 .getMobsAt(level.getBiome(pos), level.structureManager(), category, pos)
@@ -295,17 +295,17 @@ public final class PlanetMobTests {
     }
 
     /** What a level spawns of a category at a spot, as natural spawning asks for it. */
-    private static List<SpawnerData> spawns(ServerLevel level, MobCategory category, BlockPos pos) {
+    static List<SpawnerData> spawns(ServerLevel level, MobCategory category, BlockPos pos) {
         return EventHooks.getPotentialSpawns(
                         level, category, pos, WeightedRandomList.create(biomeList(level, category, pos)))
                 .unwrap();
     }
 
-    private static List<EntityType<?>> types(List<SpawnerData> list) {
+    static List<EntityType<?>> types(List<SpawnerData> list) {
         return list.stream().<EntityType<?>>map(d -> d.type).toList();
     }
 
-    private static Set<String> hazards(List<HazardTickEvent> events) {
+    static Set<String> hazards(List<HazardTickEvent> events) {
         Set<String> names = new HashSet<>();
         for (HazardTickEvent e : events) {
             names.add(e.hazard() + (e.isCanceled() ? " (spared)" : ""));
@@ -313,12 +313,12 @@ public final class PlanetMobTests {
         return names;
     }
 
-    private static float lost(LivingEntity e) {
+    static float lost(LivingEntity e) {
         return e.getMaxHealth() - e.getHealth();
     }
 
-    /** A mob with no AI standing on kepler's ground. */
-    private static <T extends Mob> T place(GameTestHelper h, ServerLevel level, EntityType<T> type, int x, int z) {
+    /** A mob with no AI standing on a level's ground. Also the M3 gate's ({@link MilestoneGateTests}). */
+    static <T extends Mob> T place(GameTestHelper h, ServerLevel level, EntityType<T> type, int x, int z) {
         T mob = type.create(level);
         h.assertTrue(mob != null, "couldn't create a " + type);
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
