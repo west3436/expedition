@@ -1,0 +1,6 @@
+{
+  "dimension": "minecraft:the_nether",
+  "space": { "center": [30000, 0], "size": 8192, "image": "expedition:textures/planet/the_nether.png" },
+  "surface": { "center": [0, 0] },
+  "structures": { "deny": ["minecraft:bastion_remnant"] }
+}

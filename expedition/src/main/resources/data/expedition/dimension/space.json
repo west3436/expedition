@@ -1,0 +1,13 @@
+{
+  "type": "expedition:space",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "expedition:space",
+      "features": false,
+      "lakes": false,
+      "layers": [],
+      "structure_overrides": []
+    }
+  }
+}

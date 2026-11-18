@@ -1,0 +1,17 @@
+{
+  "dimension": "expedition:moon",
+  "space": {
+    "center": [0, -7120],
+    "size": 2048,
+    "image": "expedition:textures/planet/moon.png",
+    "parent": "expedition:overworld"
+  },
+  "surface": { "center": [0, 0] },
+  "atmosphere": { "vacuum": true, "temperature": { "day": 300, "night": 120 } },
+  "gravity": 0.17,
+  "ores": [
+    { "block": "minecraft:iron_ore", "weight": 30, "vein_size": 8 },
+    { "block": "minecraft:copper_ore", "weight": 15, "vein_size": 10 }
+  ],
+  "ore_density": 0.6
+}
