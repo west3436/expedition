@@ -109,7 +109,12 @@ mod itself.
 Two projects make up the build. `expedition-api` is the public API: it
 depends only on Minecraft and NeoForge, and its jar holds nothing outside
 `io.github.west3436.expedition.api`. `expedition` is the mod, which nests the
-API and compiles against ZAS³'s API from Maven Central.
+API and compiles against ZAS³'s API from Maven Central. It also nests
+[SS13 Framework](https://github.com/west3436/ss13-framework), mod and API,
+from Maven Central at `framework_version` in
+[`gradle.properties`](gradle.properties): the framework applies planets'
+gravity, which the mod gives it as each dimension's. Mods released together
+must nest the same framework minor version while it is 0.x.
 
 ZAS³ itself is not built here. Dev runs and GameTests load the jar attached
 to ZAS³'s GitHub release, and the build refuses one whose SHA-256 isn't the

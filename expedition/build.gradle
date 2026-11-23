@@ -10,6 +10,14 @@ sourceSets {
     }
 }
 
+// The framework versions the jar's nested copies accept: from framework_version up to the next
+// version that may break it, the next minor while it is 0.x and the next major from 1.0.
+def frameworkRange = { String v ->
+    def (major, minor) = v.tokenize('.').take(2).collect { it as int }
+    major == 0 ? "[${v},0.${minor + 1}.0)" : "[${v},${major + 1}.0)"
+}
+ext.framework_range = frameworkRange(framework_version)
+
 // Which ZAS³ the mod compiles against and its runs load. By default the newest release
 // (zas_version); -Pzas.version=floor is the oldest one Expedition supports (zas_floor_version),
 // and -Pzas.version=<version> any other release, with -Pzas.sha256=<hash> for its jar's hash.
@@ -209,6 +217,26 @@ dependencies {
     // The GameTests that move ZAS³'s own blocks (#10) reach into its content mod, which ships in
     // that jar, to fill pipes and link devices. Only the GameTests compile against it.
     gametestCompileOnly "zas-release:zas:${zasVersion}"
+
+    // SS13 Framework: compiled against, mod and API, and loaded at run time as the mod's jar, which
+    // nests the API. Putting the API on the classpath as well would load a second module of the
+    // same name. The jar nests both, from framework_version up to the next version that may break
+    // them, so whichever mod nests the newest framework, one copy loads.
+    compileOnly "io.github.west3436:ss13-framework:${framework_version}"
+    localRuntime("io.github.west3436:ss13-framework:${framework_version}") { transitive = false }
+    jarJar('io.github.west3436:ss13-framework') {
+        transitive = false
+        version {
+            strictly framework_range
+            prefer framework_version
+        }
+    }
+    jarJar('io.github.west3436:ss13-framework-api') {
+        version {
+            strictly framework_range
+            prefer framework_version
+        }
+    }
 
     // ModDevGradle takes the jar-in-jar range only from a module selector, so
     // the API is requested by coordinates and substituted with the project.

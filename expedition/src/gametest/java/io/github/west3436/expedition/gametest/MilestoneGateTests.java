@@ -10,6 +10,7 @@ import io.github.west3436.expedition.planet.NativeAir;
 import io.github.west3436.expedition.planet.PlanetAir;
 import io.github.west3436.expedition.planet.PlanetSpawns;
 import io.github.west3436.expedition.worldgen.PlanetChunkGenerator;
+import io.github.west3436.ss13.api.gravity.Gravity;
 import io.github.west3436.zas.api.atmosphere.AtmosphereSample;
 import io.github.west3436.zas.api.atmosphere.AtmosphereState;
 import io.github.west3436.zas.api.atmosphere.Atmospheres;
@@ -160,7 +161,7 @@ public final class MilestoneGateTests {
             pig.moveTo(Vec3.atBottomCenterOf(at));
             pig.setNoAi(true);
             h.assertTrue(example.addFreshEntity(pig), "the pig wasn't added");
-            AttributeModifier modifier = pig.getAttribute(Attributes.GRAVITY).getModifier(PlanetGravity.MODIFIER_ID);
+            AttributeModifier modifier = pig.getAttribute(Attributes.GRAVITY).getModifier(Gravity.MODIFIER_ID);
             h.assertTrue(modifier != null, "the pig has no gravity modifier");
             h.assertTrue(Math.abs(modifier.amount() - (GRAVITY - 1)) < 1e-9, "the modifier is " + modifier.amount());
             h.assertTrue(

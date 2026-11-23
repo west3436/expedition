@@ -9,7 +9,6 @@
     "ChunkMapMixin",
     "ChunkStatusTasksMixin",
     "DelegateBorderChangeListenerAccessor",
-    "EntityGravityMixin",
     "HeightmapAccessor",
     "LevelLightEngineAccessor",
     "NaturalSpawnerMixin",
