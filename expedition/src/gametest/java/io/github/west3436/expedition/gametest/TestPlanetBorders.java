@@ -7,6 +7,7 @@ import io.github.west3436.expedition.planet.PlanetBorders;
 import java.util.Set;
 import java.util.stream.Collectors;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
@@ -20,6 +21,9 @@ import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
  * millions of blocks out and move ships between dimensions, so every other planet is excluded, as
  * an operator would with {@code exclude}. The config itself stays at its default, off. Set before
  * the server builds its levels, so the bounded planet's first chunk already has its cutoff.
+ *
+ * <p>Only on the GameTest server: the dev client and server load this source set too, and there the
+ * borders follow the world's config, as they do for players.
  */
 @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
 public final class TestPlanetBorders {
@@ -39,6 +43,9 @@ public final class TestPlanetBorders {
      */
     @SubscribeEvent
     public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+        if (!(event.getServer() instanceof GameTestServer)) {
+            return;
+        }
         PlanetBorders.setSettings(() -> {
             Set<ResourceLocation> others = Planets.all(LogicalSide.SERVER).stream()
                     .map(Planet::dimension)

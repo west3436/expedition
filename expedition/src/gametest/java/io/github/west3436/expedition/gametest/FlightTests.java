@@ -32,6 +32,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -48,7 +49,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -107,11 +111,38 @@ public final class FlightTests {
     private static final GameProfile STRANGER =
             new GameProfile(UUID.fromString("6f1c3a52-31a0-4c5e-9d0e-31a7c1a1e291"), "expedition_flight_stranger");
 
-    static {
-        Flights.setSettings(() -> new Flights.Settings(TIME_SCALE, 4, 20));
+    private FlightTests() {}
+
+    /**
+     * Sets the short trips and the second's warm-up, on the GameTest server only: the dev client and
+     * server load this source set too, and there trips take the world's own time.
+     */
+    @EventBusSubscriber(modid = ExpeditionMod.MOD_ID)
+    public static final class ShortTrips {
+        private ShortTrips() {}
+
+        /**
+         * Sets the settings.
+         *
+         * @param event the event
+         */
+        @SubscribeEvent
+        public static void onServerAboutToStart(ServerAboutToStartEvent event) {
+            if (event.getServer() instanceof GameTestServer) {
+                Flights.setSettings(() -> new Flights.Settings(TIME_SCALE, 4, 20));
+            }
+        }
     }
 
-    private FlightTests() {}
+    /** The GameTest server runs trips at the short time scale and warm-up these tests are timed for. */
+    @GameTest(template = "empty", batch = BATCH)
+    public static void the_gametest_server_runs_short_trips(GameTestHelper h) {
+        Flights.Settings settings = Flights.settings();
+        if (settings.tripTimeMultiplier() != TIME_SCALE || settings.warmUpTicks() != 20) {
+            h.fail("trips run at " + settings + ", not the tests' time scale " + TIME_SCALE);
+        }
+        h.succeed();
+    }
 
     // ---- The M4 gate --------------------------------------------------------------------
 
