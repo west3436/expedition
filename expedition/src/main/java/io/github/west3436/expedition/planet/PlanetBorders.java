@@ -408,7 +408,18 @@ public final class PlanetBorders {
         }
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server != null) {
-            server.execute(() -> apply(server));
+            server.execute(() -> reapply(server));
+        }
+    }
+
+    /**
+     * Applies the borders again after the config reloads, if the server's levels exist yet. A
+     * config that is corrected as a world loads (a key missing or out of range) reloads before any
+     * level is created; the borders then go on as the server starts, from the corrected values.
+     */
+    private static void reapply(MinecraftServer server) {
+        if (server.overworld() != null) {
+            apply(server);
         }
     }
 
