@@ -104,6 +104,13 @@ public final class ShuttleComputerFrameTests {
         // A working computer: its ship, alone, is the computer, which weighs 1.
         ShipStatus status = ShipComputers.status(h.getLevel(), computer);
         check(status.mass() == 1, "the built computer's ship weighs " + status.mass());
+        // No one placed it, so the first player to use it owns it, and may launch it.
+        check(computer.owner().isEmpty(), "a built computer has an owner before anyone uses it");
+        use(h, player, ItemStack.EMPTY);
+        check(computer.owner().equals(Optional.of(player.getUUID())), "the first user doesn't own the computer");
+        FakePlayer other = builder(h);
+        use(h, other, ItemStack.EMPTY);
+        check(computer.owner().equals(Optional.of(player.getUUID())), "a second user took the computer");
 
         use(h, player, FrameworkItems.CROWBAR.toStack());
         h.assertBlockState(

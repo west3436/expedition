@@ -21,7 +21,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * The Shuttle Computer: a ship's brain. It holds the ship's name, owner and box, and its window sets
- * the box and shows what the ship is. Its screen faces the player who places it.
+ * the box and shows what the ship is. Its screen faces the player who places it, who owns it; one no
+ * player placed, such as one built from a computer frame, is owned by the first player to use it.
  */
 public final class ShuttleComputerBlock extends HorizontalDirectionalBlock implements EntityBlock {
     /** The block's codec. */
@@ -77,6 +78,11 @@ public final class ShuttleComputerBlock extends HorizontalDirectionalBlock imple
         if (level instanceof ServerLevel server
                 && player instanceof ServerPlayer serverPlayer
                 && level.getBlockEntity(pos) instanceof ShuttleComputerBlockEntity computer) {
+            // A computer no one placed, such as one SS13 Framework built from a computer frame, is
+            // the first user's.
+            if (computer.owner().isEmpty()) {
+                computer.setOwner(player.getUUID(), player.getGameProfile().getName());
+            }
             ShipComputers.open(serverPlayer, server, computer);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
