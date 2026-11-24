@@ -6,12 +6,15 @@ import io.github.west3436.expedition.drive.Plot;
 import io.github.west3436.expedition.drive.Trip;
 import io.github.west3436.expedition.drive.gas.GasFuel;
 import io.github.west3436.expedition.drive.gas.GasFuels;
+import io.github.west3436.expedition.drive.gas.GasThrusterBlockEntity;
 import io.github.west3436.expedition.drive.gas.GasThrusters;
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
 import io.github.west3436.expedition.ship.ShipBox;
 import io.github.west3436.expedition.ship.ShipComputers;
 import io.github.west3436.expedition.ship.ShipStatus;
 import io.github.west3436.expedition.ship.ShuttleComputerBlockEntity;
+import io.github.west3436.ss13.device.DeviceData;
+import io.github.west3436.ss13.device.DeviceTicker;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -19,11 +22,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DirectionalBlock;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -122,6 +127,38 @@ public final class GasThrusterTests {
         check(GasFuels.fuel(O2).isEmpty(), "oxygen is a fuel");
         check(GasFuels.oxidiser(O2), "oxygen isn't an oxidiser");
         h.succeed();
+    }
+
+    /**
+     * A thruster saved before it was a device on SS13 Framework's base (#110), which saved nothing of
+     * its own and no format version, loads as a chunk of an existing world loads it, still counts in
+     * its ship's thrust, and is scheduled once it is in the level. It saves format 1.
+     */
+    @GameTest(template = "empty")
+    public static void a_thruster_saved_before_the_device_base_still_counts(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        ShuttleComputerBlockEntity computer = ship(h, Map.of(H2, 100.0, O2, 50.0));
+        BlockPos pos = h.absolutePos(THRUSTER);
+        CompoundTag old = new CompoundTag();
+        old.putString("id", "expedition:gas_thruster");
+        old.putInt("x", pos.getX());
+        old.putInt("y", pos.getY());
+        old.putInt("z", pos.getZ());
+        BlockEntity loaded = BlockEntity.loadStatic(pos, level.getBlockState(pos), old, level.registryAccess());
+        if (!(loaded instanceof GasThrusterBlockEntity thruster)) {
+            throw new GameTestAssertException("the old save loaded as " + loaded);
+        }
+        CompoundTag saved = thruster.saveWithoutMetadata(level.registryAccess());
+        check(saved.getInt(DeviceData.VERSION_KEY) == 1, "saved in format " + saved.getInt(DeviceData.VERSION_KEY));
+        level.setBlockEntity(thruster);
+        h.succeedWhen(() -> {
+            check(level.getBlockEntity(pos) == thruster, "the loaded thruster isn't in the level");
+            check(DeviceTicker.isScheduled(thruster), "the loaded thruster isn't scheduled");
+            ShipStatus status = ShipComputers.status(level, computer);
+            check(status.drives() == 1, "the ship has " + status.drives() + " drives, not 1");
+            near(GasThrusters.drive().thrust(), status.thrust(), "the ship's thrust");
+            TestGasTanks.clear(h.absolutePos(TANK));
+        });
     }
 
     /** Builds the ship, fills its tank, and sets its box round all three blocks. */

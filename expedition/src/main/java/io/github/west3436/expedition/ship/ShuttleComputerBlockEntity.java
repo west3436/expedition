@@ -1,27 +1,49 @@
 package io.github.west3436.expedition.ship;
 
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
+import io.github.west3436.ss13.api.label.Labelled;
+import io.github.west3436.ss13.api.label.Labels;
+import io.github.west3436.ss13.device.DeviceBlockEntity;
+import io.github.west3436.ss13.device.DeviceData;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.component.DataComponentMap;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 
 /**
  * A Shuttle Computer's state: its ship's name, owner and box. It is saved with the block, and moves
  * with it when the ship moves, so the box, being relative to the computer, moves too.
+ *
+ * <p>It is a device on SS13 Framework's base ({@link DeviceBlockEntity}), which versions its save and
+ * keeps its label. The ship's name is the computer's label ({@link Labelled}): saved under {@code
+ * Label}, taken from the name of the item that placed it, given back as an item's name, set with a
+ * named name tag, and shown as the block's name, as Jade does. Its device step does nothing yet.
+ *
+ * <p>Its save format, by version: 1, from before the device base, kept the name under {@code name}
+ * ({@link DeviceData#FIRST_FORMAT}); 2 keeps it as the label.
  */
-public final class ShuttleComputerBlockEntity extends BlockEntity {
-    private String name = "";
+public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implements Labelled {
+    /**
+     * The steps that bring an older save forward: version 0, with no version, is read as version 1,
+     * and version 1's {@code name} becomes version 2's {@code Label}.
+     */
+    private static final List<Consumer<CompoundTag>> FORMAT = List.of(DeviceData.FIRST_FORMAT.get(0), tag -> {
+        String name = tag.getString("name");
+        tag.remove("name");
+        if (!name.isEmpty() && !tag.contains(LABEL_KEY)) {
+            tag.putString(LABEL_KEY, name);
+        }
+    });
+
     private Optional<UUID> owner = Optional.empty();
     private String ownerName = "";
     private ShipBox box = ShipBox.NONE;
@@ -37,23 +59,22 @@ public final class ShuttleComputerBlockEntity extends BlockEntity {
     }
 
     /**
-     * The ship's name.
+     * The ship's name: the computer's label.
      *
      * @return the name, empty if it has none
      */
     public String name() {
-        return name;
+        return label();
     }
 
     /**
-     * Names the ship.
+     * Names the ship: sets the computer's label to what {@link Labels#clean} makes of the name, at
+     * most {@link ShipStatus#MAX_NAME} characters, trimmed, with no formatting codes.
      *
-     * @param name the name, cut to {@link ShipStatus#MAX_NAME} characters and trimmed
+     * @param name the name; blank clears it
      */
     public void setName(String name) {
-        String trimmed = name.strip();
-        this.name = trimmed.length() > ShipStatus.MAX_NAME ? trimmed.substring(0, ShipStatus.MAX_NAME) : trimmed;
-        setChanged();
+        setLabel(name);
     }
 
     /**
@@ -151,32 +172,17 @@ public final class ShuttleComputerBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void collectImplicitComponents(DataComponentMap.Builder components) {
-        super.collectImplicitComponents(components);
-        if (!name.isEmpty()) {
-            components.set(DataComponents.CUSTOM_NAME, Component.literal(name));
-        }
+    protected List<Consumer<CompoundTag>> formatSteps() {
+        return FORMAT;
     }
 
+    /** Nothing yet: the computer's work is done when a pilot asks for it. */
     @Override
-    protected void applyImplicitComponents(DataComponentInput input) {
-        super.applyImplicitComponents(input);
-        Component custom = input.get(DataComponents.CUSTOM_NAME);
-        if (custom != null) {
-            setName(custom.getString());
-        }
-    }
-
-    @Override
-    public void removeComponentsFromTag(CompoundTag tag) {
-        super.removeComponentsFromTag(tag);
-        tag.remove("name");
-    }
+    protected void deviceTick(ServerLevel level) {}
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        tag.putString("name", name);
         owner.ifPresent(id -> tag.putUUID("owner", id));
         tag.putString("owner_name", ownerName);
         tag.put("box", box.save());
@@ -185,7 +191,6 @@ public final class ShuttleComputerBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        name = tag.getString("name");
         owner = tag.hasUUID("owner") ? Optional.of(tag.getUUID("owner")) : Optional.empty();
         ownerName = tag.getString("owner_name");
         box = ShipBox.load(tag.getCompound("box"));
