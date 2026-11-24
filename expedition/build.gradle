@@ -12,11 +12,7 @@ sourceSets {
 
 // The framework versions the jar's nested copies accept: from framework_version up to the next
 // version that may break it, the next minor while it is 0.x and the next major from 1.0.
-def frameworkRange = { String v ->
-    def (major, minor) = v.tokenize('.').take(2).collect { it as int }
-    major == 0 ? "[${v},0.${minor + 1}.0)" : "[${v},${major + 1}.0)"
-}
-ext.framework_range = frameworkRange(framework_version)
+ext.framework_range = ss13.versionRange(framework_version)
 
 // Which ZAS³ the mod compiles against and its runs load. By default the newest release
 // (zas_version); -Pzas.version=floor is the oldest one Expedition supports (zas_floor_version),
@@ -237,6 +233,10 @@ dependencies {
             prefer framework_version
         }
     }
+
+    // SS13 Framework's test kit, for the GameTests only: test players, a player that keeps what the
+    // server sends it, and logs of sounds and errors. A GAMELIBRARY of its own, never nested.
+    gametestImplementation "io.github.west3436:ss13-framework-testkit:${framework_version}"
 
     // ModDevGradle takes the jar-in-jar range only from a module selector, so
     // the API is requested by coordinates and substituted with the project.

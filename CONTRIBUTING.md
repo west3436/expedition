@@ -72,10 +72,13 @@ commit: 0123456789ab
 ```
 
 Leave out any asset whose origin or license is unclear. The full format is
-at the top of `CREDITS`. Check it with `python scripts/check_credits.py`
-(Python 3, no dependencies). It lists asset files with no entry, entries for
-files that don't exist, malformed entries, `goon/` sources and licenses that
-aren't allowed. CI runs it in "Build and test".
+at the top of `CREDITS`. Check it with `./gradlew checkCredits`, which
+`./gradlew build` runs too. It runs SS13 Framework's `check_credits.py`, from
+the framework's Gradle plugin, so it needs Python 3 (no dependencies):
+`python3` or `python` on the `PATH`, or the one `-Pss13.python=<path>` names.
+It lists asset files with no entry, entries for files that don't exist,
+malformed entries, `goon/` sources and licenses that aren't allowed. CI runs it
+in "Build and test".
 
 No NonCommercial or NoDerivatives asset ships in any jar.
 
@@ -94,7 +97,7 @@ mod itself.
 
 | Command | What it does |
 |---|---|
-| `./gradlew build` | Compiles, runs the unit tests, and checks formatting, the API's packages and dependencies, its javadoc and its compatibility |
+| `./gradlew build` | Compiles, runs the unit tests, and checks the asset credits, formatting, the API's packages and dependencies, its javadoc and its compatibility |
 | `./gradlew runGameTestServer` | Boots a dedicated GameTest server with Expedition and the ZAS³ release jar, and runs the GameTests |
 | `./gradlew runGameTestServer -Pzas.version=floor` | The same, compiled against and run with the oldest ZAS³ that Expedition supports (`zas_floor_version` in [`gradle.properties`](gradle.properties)). `-Pzas.version=<version>` picks any other ZAS³ release, with `-Pzas.sha256=<hash>` for its jar's hash. The [Adapter tests](https://github.com/west3436/expedition/actions/workflows/compat-adapters.yml) workflow runs the oldest and the newest |
 | `./gradlew runGameTestServer -Pcontent=off` | The same, with ZAS³'s content mod switched off in `zas_atmos-startup.toml`: Expedition needs ZAS³'s simulation, not its content, so the game has to start and the tests pass without it. The [Adapter tests](https://github.com/west3436/expedition/actions/workflows/compat-adapters.yml) workflow runs it |
@@ -105,6 +108,13 @@ mod itself.
 | `./gradlew :expedition:runServer` | Starts a dev dedicated server with both |
 | `./gradlew :expedition-api:apiCompat` | Checks the API for binary-incompatible changes against the last release. Skipped until there is one |
 | `./gradlew :expedition-api:javadoc` | Builds the API's javadoc and fails on a broken or missing comment: every public or protected member needs one, with its `@param`, `@return` and `@throws`. `build` runs it |
+
+The build's conventions come from
+[SS13 Framework](https://github.com/west3436/ss13-framework)'s Gradle plugins,
+from Maven Central at the framework's version, which ZAS³ and NT Engineering
+build with too: Java 21, Spotless, the NeoForge and Parchment versions, Maven
+Central publishing, the API jar's checks and `checkCredits`. CI calls the
+framework's shared workflows. A fix to any of these goes to the framework.
 
 Two projects make up the build. `expedition-api` is the public API: it
 depends only on Minecraft and NeoForge, and its jar holds nothing outside
@@ -127,7 +137,11 @@ Expedition should build against, set `zas_version` and `zas_sha256` to it.
   Minecraft's classes are on that classpath, but the game is never
   bootstrapped.
 - **Anything in the world** gets a GameTest in the mod's `src/gametest`
-  source set, which stays out of the mod jar.
+  source set, which stays out of the mod jar. SS13 Framework's test kit
+  (`io.github.west3436.ss13.testkit`) is on its classpath: `TestPlayers` for
+  a player that can be hurt, `ListeningPlayer` for one that keeps what the
+  server sends it, and `SoundLog` and `FaultLog` for the sounds played and
+  the errors logged.
 
 ### Player-facing text
 
@@ -140,9 +154,9 @@ names its key.
 2. Fill in the PR template: link the issue (`Closes #nn`) and tick the
    checklist. For a player-facing change made with AI, include the human
    testing evidence described in [Using AI](#using-ai).
-3. CI must pass: "Build and test" (asset credits, build, unit tests,
+3. CI must pass: "ci / Build and test" (asset credits, build, unit tests,
    formatting, the API's javadoc with no comment missing, and GameTests) and
-   "Docs links".
+   "ci / Docs links".
 4. PRs are squash-merged, so the PR title becomes the commit subject. Write it
    in the imperative: "Add the gas thruster".
 
