@@ -34,7 +34,7 @@ jobs:
       notes: |
         For Minecraft 1.21.1 on NeoForge. Needs [ZAS³](https://github.com/west3436/zas-cubed/releases) {zas_floor_version} or newer.
 
-        - **`expedition-{mod_version}.jar`**: Expedition. Install it on the server and on every client, with ZAS³.
+        - **`expedition-{mod_version}.jar`**: Expedition. Install it on the server and on every client, with ZAS³. [SS13 Framework](https://github.com/west3436/ss13-framework) {framework_version} is inside it, so it never needs installing.
         - **`expedition-api-*.jar`**: the API, with its sources and javadoc, for mod developers.
 
         Guides are on the [wiki]({wiki}).

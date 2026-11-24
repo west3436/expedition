@@ -9,6 +9,9 @@ import io.github.west3436.expedition.mover.QuietBlocks;
 import io.github.west3436.expedition.mover.RelocationHandover;
 import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.mover.ZasRelocationHandover;
+import io.github.west3436.ss13.api.label.Labelled;
+import io.github.west3436.ss13.device.DeviceBlockEntity;
+import io.github.west3436.ss13.device.DeviceTicker;
 import io.github.west3436.zas.api.gas.GasParcel;
 import io.github.west3436.zas.api.gas.StandardAir;
 import io.github.west3436.zas.api.relocation.RelocationOutcome;
@@ -23,8 +26,6 @@ import io.github.west3436.zas.atmos.canister.CanisterBlock;
 import io.github.west3436.zas.atmos.canister.CanisterBlockEntity;
 import io.github.west3436.zas.atmos.controller.AreaAirControllerBlockEntity;
 import io.github.west3436.zas.atmos.device.AtmosDevice;
-import io.github.west3436.zas.atmos.device.DeviceTicker;
-import io.github.west3436.zas.atmos.label.Labelled;
 import io.github.west3436.zas.atmos.pipe.PipeCapBlock;
 import io.github.west3436.zas.atmos.pipe.PipeNetwork;
 import io.github.west3436.zas.atmos.pipe.PipeNodeEntity;
@@ -33,6 +34,10 @@ import io.github.west3436.zas.atmos.scrubber.ScrubberBlock;
 import io.github.west3436.zas.atmos.scrubber.ScrubberBlockEntity;
 import io.github.west3436.zas.atmos.vent.VentBlock;
 import io.github.west3436.zas.atmos.vent.VentBlockEntity;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -950,13 +955,64 @@ public final class ZasContentMoveTests {
     }
 
     private static void loaded(ServerLevel level, BlockPos pos) {
-        if (level.getBlockEntity(pos) instanceof AtmosDevice device && !DeviceTicker.isScheduled(device)) {
+        if (level.getBlockEntity(pos) instanceof AtmosDevice device && !isScheduled(device)) {
             device.onLoad();
         }
     }
 
+    /**
+     * Whether a device is on its ticker's schedule. From ZAS³ 1.3.0 its devices are SS13 Framework's,
+     * on the framework's ticker; ZAS³ 1.2.0, the oldest Expedition supports, has a ticker of its own,
+     * which the floor run of these tests reaches by name.
+     */
+    private static boolean isScheduled(BlockEntity device) {
+        if (device instanceof DeviceBlockEntity framework) {
+            return DeviceTicker.isScheduled(framework);
+        }
+        return (boolean) zas120(device, "io.github.west3436.zas.atmos.device.DeviceTicker", "isScheduled");
+    }
+
     private static void label(ServerLevel level, BlockPos pos, String label) {
-        entity(level, pos, Labelled.class).setLabel(label);
+        BlockEntity be = entity(level, pos, BlockEntity.class);
+        if (be instanceof Labelled labelled) {
+            labelled.setLabel(label);
+        } else {
+            zas120(be, "io.github.west3436.zas.atmos.label.Labelled", "setLabel", label);
+        }
+    }
+
+    private static String labelOf(ServerLevel level, BlockPos pos) {
+        BlockEntity be = entity(level, pos, BlockEntity.class);
+        if (be instanceof Labelled labelled) {
+            return labelled.label();
+        }
+        return (String) zas120(be, "io.github.west3436.zas.atmos.label.Labelled", "label");
+    }
+
+    /**
+     * Calls a method of ZAS³ 1.2.0's own device ticker or label, which SS13 Framework's replaced in
+     * 1.3.0: a static method that takes the block entity, or the block entity's own. Goes when the
+     * floor is 1.3.0.
+     */
+    private static Object zas120(BlockEntity be, String type, String name, Object... args) {
+        try {
+            Class<?> owner = Class.forName(type, true, be.getClass().getClassLoader());
+            Method method = Arrays.stream(owner.getMethods())
+                    .filter(m -> m.getName().equals(name))
+                    .findFirst()
+                    .orElseThrow(() -> new GameTestAssertException(type + " has no " + name));
+            if (Modifier.isStatic(method.getModifiers())) {
+                return method.invoke(null, be);
+            }
+            if (!owner.isInstance(be)) {
+                throw new GameTestAssertException("expected a " + owner.getSimpleName() + ", found " + be);
+            }
+            return method.invoke(be, args);
+        } catch (ClassNotFoundException | IllegalAccessException e) {
+            throw new IllegalStateException("ZAS³'s " + type + " can't be reached", e);
+        } catch (InvocationTargetException e) {
+            throw new IllegalStateException(e.getCause());
+        }
     }
 
     /** Takes every block and entity out of a box, quietly, so nothing drops. */
@@ -1041,7 +1097,7 @@ public final class ZasContentMoveTests {
     }
 
     private static void assertLabel(GameTestHelper h, ServerLevel level, BlockPos pos, String label) {
-        String now = entity(level, pos, Labelled.class).label();
+        String now = labelOf(level, pos);
         h.assertTrue(
                 now.equals(label), "the label at " + pos.toShortString() + " is '" + now + "', not '" + label + "'");
     }

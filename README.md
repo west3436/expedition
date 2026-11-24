@@ -2,7 +2,7 @@
 
 Planetary exploration for Minecraft (NeoForge 1.21.1), built on [ZAS³](https://github.com/west3436/zas-cubed). A spiritual successor to WarpDrive: build a shuttle out of blocks, fly it through a Space dimension, and land on planets whose air, ores, mobs and structures are defined in datapacks.
 
-> **Status: early development.** There is no playable content yet. This repository holds the build, the API jar and the test harness.
+> **Status: 0.1.0, the first playable pre-release.** Build a shuttle from a Shuttle Computer, gas thrusters and hull blocks, and fly it through transit between the Overworld, the Moon, the Nether and the End without losing its cabin air. Planets are datapack files. Navigation, automation, the electric and Bluespace drives, and things to find in Space come in later versions. Until 1.0, a new minor version may break the API and the planet file format.
 
 ## Goals
 
