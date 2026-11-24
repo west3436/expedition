@@ -32,9 +32,11 @@ jobs:
         expedition-api/build/libs/expedition-api-{api_version}-sources.jar
         expedition-api/build/libs/expedition-api-{api_version}-javadoc.jar
       notes: |
-        For Minecraft 1.21.1 on NeoForge. Needs [ZAS³](https://github.com/west3436/zas-cubed/releases) {zas_floor_version} or newer.
+        For Minecraft 1.21.1 on NeoForge. Needs [ZAS³](https://github.com/west3436/zas-cubed/releases) {zas_floor_version} or newer. [SS13 Framework](https://github.com/west3436/ss13-framework) {framework_version} is inside Expedition's jar, so it never needs installing.
 
         - **`expedition-{mod_version}.jar`**: Expedition. Install it on the server and on every client, with ZAS³.
         - **`expedition-api-*.jar`**: the API, with its sources and javadoc, for mod developers.
 
-        Guides are on the [wiki]({wiki}).
+        A pre-release: until 1.0, a new minor version may break the API and the planet file format.
+
+        What's new is in the [changelog]({wiki}/Changelog), and the [wiki]({wiki}) links what else there is.

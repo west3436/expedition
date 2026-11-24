@@ -10,7 +10,7 @@ displayName = "Expedition"
 authors = "west3436"
 description = '''
 Planetary exploration built on ZAS³'s atmospherics: shuttles, a Space dimension
-and planets defined in datapacks. In early development.
+and planets defined in datapacks.
 '''
 
 [[mixins]]
