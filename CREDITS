@@ -75,6 +75,10 @@ origin: original
 path: expedition/src/main/resources/assets/expedition/models/item/shuttle_computer.json
 origin: original
 
+path: expedition/src/main/resources/assets/expedition/models/item/shuttle_computer_board.json
+origin: original
+notes: Uses SS13 Framework's circuit board texture, ss13_framework:item/circuit_board.
+
 path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_front.png
 origin: vgstation13
 source: icons/obj/computer.dmi

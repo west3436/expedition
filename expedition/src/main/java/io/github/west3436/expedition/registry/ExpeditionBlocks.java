@@ -5,6 +5,8 @@ import io.github.west3436.expedition.drive.gas.GasThrusterBlock;
 import io.github.west3436.expedition.drive.gas.GasThrusterBlockEntity;
 import io.github.west3436.expedition.ship.ShuttleComputerBlock;
 import io.github.west3436.expedition.ship.ShuttleComputerBlockEntity;
+import io.github.west3436.ss13.api.construction.MachineBoard;
+import io.github.west3436.ss13.api.construction.MachineBoards;
 import java.util.function.Supplier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.BlockItem;
@@ -49,6 +51,13 @@ public final class ExpeditionBlocks {
                     "shuttle_computer",
                     () -> BlockEntityType.Builder.of(ShuttleComputerBlockEntity::new, SHUTTLE_COMPUTER.get())
                             .build(null));
+
+    /**
+     * {@code expedition:shuttle_computer_board}: the Shuttle Computer's circuit board. In SS13
+     * Framework's computer frame, with a console screen, it builds a Shuttle Computer.
+     */
+    public static final DeferredItem<Item> SHUTTLE_COMPUTER_BOARD =
+            ITEMS.registerSimpleItem("shuttle_computer_board", new Item.Properties());
 
     /** {@code expedition:gas_thruster}: the first engine, which burns ZAS³ gas. */
     public static final DeferredBlock<GasThrusterBlock> GAS_THRUSTER = BLOCKS.register(
@@ -106,6 +115,8 @@ public final class ExpeditionBlocks {
      * @param modBus the mod's event bus
      */
     public static void register(IEventBus modBus) {
+        // The board builds the computer in SS13 Framework's computer frame.
+        MachineBoards.register(SHUTTLE_COMPUTER_BOARD.getId(), MachineBoard.computer(SHUTTLE_COMPUTER.getId()));
         BLOCKS.register(modBus);
         ITEMS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
@@ -115,6 +126,7 @@ public final class ExpeditionBlocks {
     private static void onBuildTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(SHUTTLE_COMPUTER_ITEM);
+            event.accept(SHUTTLE_COMPUTER_BOARD);
             event.accept(GAS_THRUSTER_ITEM);
         } else if (event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS) {
             event.accept(SHIP_HULL_ITEM);
