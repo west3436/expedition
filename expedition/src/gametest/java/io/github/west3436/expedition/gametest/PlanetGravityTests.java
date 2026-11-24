@@ -2,7 +2,8 @@ package io.github.west3436.expedition.gametest;
 
 import io.github.west3436.expedition.ExpeditionMod;
 import io.github.west3436.expedition.api.planet.PlanetGravity;
-import io.github.west3436.expedition.planet.PlanetGravityEvents;
+import io.github.west3436.ss13.api.gravity.Gravity;
+import io.github.west3436.ss13.gravity.GravityEntities;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -65,7 +66,7 @@ public final class PlanetGravityTests {
         ServerLevel kepler = level(h, TestDimensions.KEPLER);
         Pig pig = pigIn(h, kepler, 0);
         onceTracked(h, kepler, pig, () -> {
-            AttributeModifier modifier = pig.getAttribute(Attributes.GRAVITY).getModifier(PlanetGravity.MODIFIER_ID);
+            AttributeModifier modifier = pig.getAttribute(Attributes.GRAVITY).getModifier(Gravity.MODIFIER_ID);
             h.assertTrue(modifier != null, "the pig on kepler has no gravity modifier");
             h.assertValueEqual(modifier.operation(), AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL, "its operation");
             near(h, modifier.amount(), KEPLER_GRAVITY - 1, "its amount");
@@ -134,11 +135,11 @@ public final class PlanetGravityTests {
         Pig inOverworld = pigIn(h, h.getLevel(), 0);
         onceTracked(h, kepler, onKepler, () -> {
             try {
-                PlanetGravityEvents.apply(onKepler, PlanetGravity.NORMAL);
-                PlanetGravityEvents.apply(inOverworld, KEPLER_GRAVITY);
+                GravityEntities.apply(onKepler, PlanetGravity.NORMAL);
+                GravityEntities.apply(inOverworld, KEPLER_GRAVITY);
                 assertNoModifiers(h, onKepler, "the pig on kepler, stripped");
 
-                PlanetGravityEvents.refresh(h.getLevel().getServer());
+                GravityEntities.refresh(h.getLevel().getServer());
                 near(h, onKepler.getGravity(), 0.08 * KEPLER_GRAVITY, "the pig on kepler's gravity");
                 assertNoModifiers(h, inOverworld, "the pig in the Overworld");
             } finally {
@@ -193,9 +194,9 @@ public final class PlanetGravityTests {
     }
 
     private static void assertNoModifiers(GameTestHelper h, LivingEntity entity, String what) {
-        assertNone(h, entity, Attributes.GRAVITY, PlanetGravity.MODIFIER_ID, what);
-        assertNone(h, entity, Attributes.SAFE_FALL_DISTANCE, PlanetGravityEvents.SAFE_FALL_ID, what);
-        assertNone(h, entity, Attributes.FALL_DAMAGE_MULTIPLIER, PlanetGravityEvents.FALL_DAMAGE_ID, what);
+        assertNone(h, entity, Attributes.GRAVITY, Gravity.MODIFIER_ID, what);
+        assertNone(h, entity, Attributes.SAFE_FALL_DISTANCE, Gravity.SAFE_FALL_ID, what);
+        assertNone(h, entity, Attributes.FALL_DAMAGE_MULTIPLIER, Gravity.FALL_DAMAGE_ID, what);
     }
 
     private static void assertNone(

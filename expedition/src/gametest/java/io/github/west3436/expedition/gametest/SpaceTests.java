@@ -4,6 +4,7 @@ import io.github.west3436.expedition.ExpeditionMod;
 import io.github.west3436.expedition.api.planet.PlanetGravity;
 import io.github.west3436.expedition.api.planet.Planets;
 import io.github.west3436.expedition.api.space.Space;
+import io.github.west3436.ss13.api.gravity.Gravity;
 import io.github.west3436.zas.api.atmosphere.AtmosphereSample;
 import io.github.west3436.zas.api.atmosphere.AtmosphereState;
 import io.github.west3436.zas.api.atmosphere.Atmospheres;
@@ -123,7 +124,7 @@ public final class SpaceTests {
         h.assertTrue(space.addFreshEntity(pig), "the pig wasn't added to Space");
         try {
             h.assertTrue(
-                    pig.getAttribute(Attributes.GRAVITY).getModifier(PlanetGravity.MODIFIER_ID) != null,
+                    pig.getAttribute(Attributes.GRAVITY).getModifier(Gravity.MODIFIER_ID) != null,
                     "the pig in Space has no gravity modifier");
             h.assertTrue(pig.getGravity() == 0, "the pig's gravity in Space is " + pig.getGravity());
         } finally {

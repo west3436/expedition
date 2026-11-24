@@ -1,6 +1,7 @@
 package io.github.west3436.expedition.planet;
 
 import com.mojang.logging.LogUtils;
+import io.github.west3436.ss13.gravity.GravityEntities;
 import java.util.List;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.IEventBus;
@@ -29,8 +30,9 @@ import org.slf4j.Logger;
  *       live in its open air ({@link NativeAir}).
  *   <li>A joining player is sent every planet, and every player is sent them again after a {@code
  *       /reload}.
- *   <li>A planet's gravity is put on its living entities ({@link PlanetGravityEvents}), and put on
- *       every entity again after a {@code /reload}.
+ *   <li>A planet's gravity is its dimension's in SS13 Framework ({@link PlanetGravityProvider}),
+ *       which puts it on every entity, and puts it on every living entity again after a {@code
+ *       /reload}.
  * </ul>
  */
 public final class PlanetEvents {
@@ -50,7 +52,7 @@ public final class PlanetEvents {
         gameBus.addListener(PlanetEvents::onServerStopped);
         PlanetSpawns.register(gameBus);
         NativeAir.register(gameBus);
-        PlanetGravityEvents.register(gameBus);
+        PlanetGravityProvider.register();
     }
 
     private static void onAddReloadListeners(AddReloadListenerEvent event) {
@@ -65,7 +67,7 @@ public final class PlanetEvents {
         if (event.getPlayer() == null) {
             // A /reload: the planets are new.
             finishLoad(event.getPlayerList().getServer(), false);
-            PlanetGravityEvents.refresh(event.getPlayerList().getServer());
+            GravityEntities.refresh(event.getPlayerList().getServer());
         }
         PlanetsPayload payload =
                 new PlanetsPayload(List.copyOf(PlanetRegistry.server().planets().values()));
