@@ -1,6 +1,7 @@
 package io.github.west3436.expedition.ship;
 
 import io.github.west3436.expedition.drive.ThrustModel;
+import io.github.west3436.ss13.api.label.Labels;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
@@ -39,8 +40,8 @@ public record ShipStatus(
         double gravity,
         Optional<String> overlap,
         boolean tooLarge) {
-    /** The longest name a ship may have. */
-    public static final int MAX_NAME = 32;
+    /** The longest name a ship may have: a label's ({@link Labels#MAX_LENGTH}), as the name is the computer's. */
+    public static final int MAX_NAME = Labels.MAX_LENGTH;
 
     /** How a status goes over the network. */
     public static final StreamCodec<RegistryFriendlyByteBuf, ShipStatus> STREAM_CODEC =

@@ -10,17 +10,25 @@ import io.github.west3436.expedition.ship.ShipComputers;
 import io.github.west3436.expedition.ship.ShipMass;
 import io.github.west3436.expedition.ship.ShipStatus;
 import io.github.west3436.expedition.ship.ShuttleComputerBlockEntity;
+import io.github.west3436.ss13.api.label.Labelled;
+import io.github.west3436.ss13.api.label.Labels;
+import io.github.west3436.ss13.device.DeviceBlockEntity;
+import io.github.west3436.ss13.device.DeviceData;
+import io.github.west3436.ss13.device.DeviceTicker;
 import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -152,6 +160,74 @@ public final class ShuttleComputerTests {
         check(copy.ownerName().equals("Pilot"), "the owner is " + copy.ownerName());
         check(copy.owner().equals(computer.owner()), "the owner's id changed");
         check(copy.box().equals(new ShipBox(1, 2, 3, 4, 5, 6)), "the box is " + copy.box());
+        h.succeed();
+    }
+
+    /**
+     * A computer saved before it was a device on SS13 Framework's base (#110), with its name under
+     * {@code name} and no format version, loads with its name, owner and box, as a chunk of an
+     * existing world loads it, and is tracked and scheduled once it is in the level. It saves the
+     * name as its label, in format 2.
+     */
+    @GameTest(template = "empty")
+    public static void a_computer_saved_before_the_device_base_keeps_its_ship(GameTestHelper h) {
+        ServerLevel level = h.getLevel();
+        BlockPos rel = new BlockPos(1, 2, 1);
+        ShuttleComputerBlockEntity placed = place(h, rel, Direction.EAST);
+        BlockPos pos = placed.getBlockPos();
+        UUID id = UUID.randomUUID();
+        CompoundTag old = new CompoundTag();
+        old.putString("id", "expedition:shuttle_computer");
+        old.putInt("x", pos.getX());
+        old.putInt("y", pos.getY());
+        old.putInt("z", pos.getZ());
+        old.putString("name", "Kestrel");
+        old.putUUID("owner", id);
+        old.putString("owner_name", "Pilot");
+        old.put("box", new ShipBox(1, 2, 3, 4, 5, 6).save());
+
+        BlockEntity loaded = BlockEntity.loadStatic(pos, level.getBlockState(pos), old, level.registryAccess());
+        if (!(loaded instanceof ShuttleComputerBlockEntity computer)) {
+            throw new GameTestAssertException("the old save loaded as " + loaded);
+        }
+        check(computer.name().equals("Kestrel"), "the name is '" + computer.name() + "'");
+        check(computer.label().equals("Kestrel"), "the label is '" + computer.label() + "'");
+        check(computer.owner().equals(Optional.of(id)), "the owner is " + computer.owner());
+        check(computer.ownerName().equals("Pilot"), "the owner's name is " + computer.ownerName());
+        check(computer.box().equals(new ShipBox(1, 2, 3, 4, 5, 6)), "the box is " + computer.box());
+
+        CompoundTag saved = computer.saveWithoutMetadata(level.registryAccess());
+        check(saved.getInt(DeviceData.VERSION_KEY) == 2, "saved in format " + saved.getInt(DeviceData.VERSION_KEY));
+        check(saved.getString(DeviceBlockEntity.LABEL_KEY).equals("Kestrel"), "saved with " + saved);
+        check(!saved.contains("name"), "the old name is still saved: " + saved);
+
+        level.setBlockEntity(computer);
+        h.succeedWhen(() -> {
+            check(level.getBlockEntity(pos) == computer, "the loaded computer isn't in the level");
+            check(ShipComputers.loaded(level).contains(computer), "the loaded computer isn't tracked");
+            check(DeviceTicker.isScheduled(computer), "the loaded computer isn't scheduled");
+            ShipStatus status = ShipComputers.status(level, computer);
+            check(status.name().equals("Kestrel"), "the window names the ship '" + status.name() + "'");
+            check(status.owner().equals("Pilot"), "the window's owner is " + status.owner());
+            check(status.box().equals(new ShipBox(1, 2, 3, 4, 5, 6)), "the window's box is " + status.box());
+        });
+    }
+
+    /**
+     * The ship's name is the computer's label: a name tag's name, or the label a framework tool sets,
+     * names the ship, and the label is cleaned as every label is.
+     */
+    @GameTest(template = "empty")
+    public static void the_ship_name_is_the_computer_label(GameTestHelper h) {
+        ShuttleComputerBlockEntity computer = place(h, new BlockPos(1, 2, 1), Direction.NORTH);
+        Labelled labelled = Labels.at(h.getLevel(), computer.getBlockPos());
+        check(labelled == computer, "the computer isn't the label's device: " + labelled);
+        check(labelled.setLabel("Heron"), "the label didn't change");
+        check(computer.name().equals("Heron"), "the name is '" + computer.name() + "'");
+        ShipComputers.rename(computer, "  Grey \u00a7lGoose  ");
+        check(computer.label().equals("Grey Goose"), "the label is '" + computer.label() + "'");
+        ShipComputers.rename(computer, "");
+        check(computer.name().isEmpty() && computer.label().isEmpty(), "a blank name left " + computer.name());
         h.succeed();
     }
 
