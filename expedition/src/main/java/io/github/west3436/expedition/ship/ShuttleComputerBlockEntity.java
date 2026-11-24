@@ -28,6 +28,10 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * Label}, taken from the name of the item that placed it, given back as an item's name, set with a
  * named name tag, and shown as the block's name, as Jade does. Its device step does nothing yet.
  *
+ * <p>Its ship has an id of its own ({@link #shipId()}), saved with it, which stays the same when the
+ * ship is renamed or moves: its box is an SS13 Framework area with that id ({@link ShipAreas}). A
+ * computer saved before it had one is given one when it loads.
+ *
  * <p>Its save format, by version: 1, from before the device base, kept the name under {@code name}
  * ({@link DeviceData#FIRST_FORMAT}); 2 keeps it as the label.
  */
@@ -44,6 +48,16 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         }
     });
 
+    private static final String SHIP_ID_KEY = "ship_id";
+
+    private UUID shipId = UUID.randomUUID();
+
+    /** Whether the ship's id was made at load, as its save had none, so the chunk must save it. */
+    private boolean shipIdMade;
+
+    /** The name the ship's area was last said to have, to tell when a label changes it. */
+    private String areaName = "";
+
     private Optional<UUID> owner = Optional.empty();
     private String ownerName = "";
     private ShipBox box = ShipBox.NONE;
@@ -56,6 +70,16 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
      */
     public ShuttleComputerBlockEntity(BlockPos pos, BlockState state) {
         super(ExpeditionBlocks.SHUTTLE_COMPUTER_ENTITY.get(), pos, state);
+    }
+
+    /**
+     * The ship's id: its area's ({@link ShipAreas#areaId}). It stays the same when the ship is renamed
+     * or moves. A copy of the computer, such as a creative player picks, gets an id of its own.
+     *
+     * @return the id
+     */
+    public UUID shipId() {
+        return shipId;
     }
 
     /**
@@ -122,8 +146,24 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
      * @param box the box
      */
     public void setBox(ShipBox box) {
+        BoundingBox before = worldBox();
         this.box = box;
         setChanged();
+        BoundingBox after = worldBox();
+        if (!after.equals(before)) {
+            ShipAreas.changed(this, before);
+            ShipAreas.changed(this, after);
+        }
+    }
+
+    /** Also says the ship's area was renamed, when a label changed its name. */
+    @Override
+    public void setChanged() {
+        super.setChanged();
+        if (!areaName.equals(name())) {
+            areaName = name();
+            ShipAreas.changed(this, worldBox());
+        }
     }
 
     /**
@@ -154,6 +194,8 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         super.setLevel(level);
         if (!level.isClientSide) {
             ShipComputers.track(this);
+            areaName = name();
+            ShipAreas.changed(this, worldBox());
         }
     }
 
@@ -162,6 +204,7 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         super.clearRemoved();
         if (level != null && !level.isClientSide) {
             ShipComputers.track(this);
+            ShipAreas.changed(this, worldBox());
         }
     }
 
@@ -169,6 +212,24 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
     public void setRemoved() {
         super.setRemoved();
         ShipComputers.untrack(this);
+        ShipAreas.changed(this, worldBox());
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        if (shipIdMade && level != null && !level.isClientSide) {
+            shipIdMade = false;
+            setChanged();
+        }
+    }
+
+    /** A copy of the computer as an item, as a creative player picks, makes a ship of its own. */
+    @Override
+    @SuppressWarnings("deprecation")
+    public void removeComponentsFromTag(CompoundTag tag) {
+        super.removeComponentsFromTag(tag);
+        tag.remove(SHIP_ID_KEY);
     }
 
     @Override
@@ -183,6 +244,7 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
+        tag.putUUID(SHIP_ID_KEY, shipId);
         owner.ifPresent(id -> tag.putUUID("owner", id));
         tag.putString("owner_name", ownerName);
         tag.put("box", box.save());
@@ -191,6 +253,11 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
+        if (tag.hasUUID(SHIP_ID_KEY)) {
+            shipId = tag.getUUID(SHIP_ID_KEY);
+        } else {
+            shipIdMade = true;
+        }
         owner = tag.hasUUID("owner") ? Optional.of(tag.getUUID("owner")) : Optional.empty();
         ownerName = tag.getString("owner_name");
         box = ShipBox.load(tag.getCompound("box"));

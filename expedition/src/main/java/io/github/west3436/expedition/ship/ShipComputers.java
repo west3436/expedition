@@ -111,6 +111,33 @@ public final class ShipComputers {
     }
 
     /**
+     * The loaded computer whose ship's box holds a position, for its area ({@link ShipAreas}). Where
+     * boxes overlap, which no ship that moves allows, the ship whose id sorts first. Quick, copying
+     * nothing and loading nothing.
+     *
+     * @param level the level
+     * @param pos the position
+     * @return the computer, if a box holds it
+     */
+    static Optional<ShuttleComputerBlockEntity> holding(Level level, BlockPos pos) {
+        Set<ShuttleComputerBlockEntity> set = LOADED.get(level);
+        if (set == null) {
+            return Optional.empty();
+        }
+        ShuttleComputerBlockEntity found = null;
+        synchronized (set) {
+            for (ShuttleComputerBlockEntity computer : set) {
+                if (!computer.isRemoved()
+                        && computer.worldBox().isInside(pos)
+                        && (found == null || computer.shipId().compareTo(found.shipId()) < 0)) {
+                    found = computer;
+                }
+            }
+        }
+        return Optional.ofNullable(found);
+    }
+
+    /**
      * A loaded computer whose ship's box overlaps this one's. Two such ships can't both move: a ship
      * may not carry another's computer, nor part of its box.
      *

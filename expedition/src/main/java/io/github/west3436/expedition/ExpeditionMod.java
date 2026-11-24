@@ -17,6 +17,7 @@ import io.github.west3436.expedition.portal.PortalRules;
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
 import io.github.west3436.expedition.ship.BlockWeights;
 import io.github.west3436.expedition.ship.ComputerStatusPayload;
+import io.github.west3436.expedition.ship.ShipAreas;
 import io.github.west3436.expedition.transit.Transits;
 import io.github.west3436.expedition.worldgen.ExpeditionWorldgen;
 import io.github.west3436.zas.api.ZasApi;
@@ -63,6 +64,7 @@ public final class ExpeditionMod {
         GasThrusters.setSettings(ExpeditionConfig.GAS_THRUSTER);
         GasThrusters.register();
         GasFuels.register(NeoForge.EVENT_BUS);
+        ShipAreas.register();
     }
 
     private static void onCommonSetup(FMLCommonSetupEvent event) {
