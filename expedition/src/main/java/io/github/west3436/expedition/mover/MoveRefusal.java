@@ -51,7 +51,7 @@ public final class MoveRefusal {
 
     /**
      * The player who started the move may not build on part of the land at one end or the other:
-     * spawn protection, or a claim another mod keeps ({@link ClaimCheck}). It is a check of {@link
+     * spawn protection, or a claim another mod keeps ({@link ClaimMoveCheck}). It is a check of {@link
      * MoveSettings#checks()}, asked after the mover's own, and only for a move a player started
      * ({@link MoveSettings#startedBy}). A dry run lists each chunk.
      */

@@ -2,7 +2,7 @@ package io.github.west3436.expedition.gametest;
 
 import com.mojang.authlib.GameProfile;
 import io.github.west3436.expedition.ExpeditionMod;
-import io.github.west3436.expedition.mover.ClaimCheck;
+import io.github.west3436.expedition.mover.ClaimMoveCheck;
 import io.github.west3436.expedition.mover.DryRun;
 import io.github.west3436.expedition.mover.MoveJob;
 import io.github.west3436.expedition.mover.MoveRefusal;
@@ -12,6 +12,7 @@ import io.github.west3436.expedition.mover.MoveSettings;
 import io.github.west3436.expedition.mover.Obstacle;
 import io.github.west3436.expedition.mover.QuietBlocks;
 import io.github.west3436.expedition.mover.ShipMover;
+import io.github.west3436.ss13.claim.ClaimCheck;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -107,8 +108,8 @@ public final class ClaimTests {
                     ServerPlayer pilot = FakePlayerFactory.get(level, PILOT);
                     PlayerList players = level.getServer().getPlayerList();
                     h.assertFalse(players.isOp(PILOT), "the pilot is an operator already");
-                    MoveSettings settings = MoveSettings.DEFAULT.withChecks(
-                            List.of(new ClaimCheck(pilot, spawnProtection(b.offset(1, 0, 1), 1))));
+                    MoveSettings settings = MoveSettings.DEFAULT.withChecks(List.of(
+                            new ClaimMoveCheck(new ClaimCheck(pilot, spawnProtection(b.offset(1, 0, 1), 1)))));
 
                     MoveJob refused = ShipMover.start(request, settings);
                     h.assertTrue(refused.isDone(), "a refused move is still going");
@@ -174,7 +175,7 @@ public final class ClaimTests {
                     ServerPlayer trespasser = FakePlayerFactory.get(level, TRESPASSER);
                     // The server itself protects nothing here.
                     MoveSettings settings = MoveSettings.DEFAULT.withChecks(
-                            List.of(new ClaimCheck(trespasser, (l, pos, player) -> true)));
+                            List.of(new ClaimMoveCheck(new ClaimCheck(trespasser, (l, pos, player) -> true))));
                     try {
                         claim = new Claim(level.dimension(), box(a), false);
                         assertRefusedAt(h, level, request, settings, new ChunkPos(a));
