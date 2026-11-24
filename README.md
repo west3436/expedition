@@ -14,7 +14,7 @@ Planetary exploration for Minecraft (NeoForge 1.21.1), built on [ZAS³](https://
 
 ## Requirements
 
-ZAS³ 1.2.0 or newer is the one required mod. Every other integration is optional and loads only when its mod is installed. [SS13 Framework](https://github.com/west3436/ss13-framework), which applies gravity, is inside Expedition's jar, so it never needs installing.
+ZAS³ 1.3.0 or newer is the one required mod. Every other integration is optional and loads only when its mod is installed. [SS13 Framework](https://github.com/west3436/ss13-framework), which applies gravity, is inside Expedition's jar, so it never needs installing.
 
 ## For server owners
 

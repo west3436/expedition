@@ -35,6 +35,14 @@ switch (zasChoice) {
 }
 zasSha256 = zasSha256.trim().toLowerCase()
 
+// -Pzas.run=<version>, with -Pzas.run.sha256=<hash>, runs with another ZAS³ release than the one the
+// mod compiles against. The Adapter tests' "older than supported" row runs with a ZAS³ older than
+// zas_floor_version, which the game must refuse to load Expedition beside.
+def zasRunVersion = providers.gradleProperty('zas.run').getOrElse(zasVersion)
+def zasRunSha256 = zasRunVersion == zasVersion
+        ? zasSha256
+        : providers.gradleProperty('zas.run.sha256').getOrElse('').trim().toLowerCase()
+
 // The ZAS³ jar players install, which holds zas and zas_atmos and nests the ZAS³ API. It is the
 // jar attached to ZAS³'s GitHub release: an Ivy repository of bare jars, which answers for these
 // coordinates and nothing else, and which alone may answer for them.
@@ -127,22 +135,22 @@ def gametestRun = layout.buildDirectory.dir('gametestRun')
 
 // The ZAS³ jar a run loads is checked against the hash in gradle.properties first, since a
 // release's files can be replaced.
-def zasJar = configurations.detachedConfiguration(dependencies.create("zas-release:zas:${zasVersion}"))
+def zasJar = configurations.detachedConfiguration(dependencies.create("zas-release:zas:${zasRunVersion}"))
 zasJar.transitive = false
 def verifyZasRelease = tasks.register('verifyZasRelease') {
     group = 'verification'
-    description = "Checks the ZAS³ ${zasVersion} release jar against its SHA-256."
+    description = "Checks the ZAS³ ${zasRunVersion} release jar against its SHA-256."
     inputs.files(zasJar).withPropertyName('zasJar')
-    inputs.property('sha256', zasSha256)
+    inputs.property('sha256', zasRunSha256)
     doLast {
         def jar = zasJar.singleFile
         def sha256 = java.security.MessageDigest.getInstance('SHA-256').digest(jar.bytes).encodeHex().toString()
-        if (zasSha256.isEmpty()) {
+        if (zasRunSha256.isEmpty()) {
             logger.warn("verifyZasRelease: ${jar.name} is unverified. Pass -Pzas.sha256=<hash>: its line in " +
                     "the release's SHA256SUMS.txt. This jar's SHA-256 is ${sha256}.")
-        } else if (sha256 != zasSha256) {
-            throw new GradleException("verifyZasRelease: ${jar.name} from ZAS³'s GitHub release v${zasVersion} " +
-                    "has SHA-256 ${sha256}, but ${zasSha256} is expected. It must be that jar's line in the " +
+        } else if (sha256 != zasRunSha256) {
+            throw new GradleException("verifyZasRelease: ${jar.name} from ZAS³'s GitHub release v${zasRunVersion} " +
+                    "has SHA-256 ${sha256}, but ${zasRunSha256} is expected. It must be that jar's line in the " +
                     "release's SHA256SUMS.txt.")
         }
     }
@@ -209,7 +217,7 @@ dependencies {
     // ZAS³'s API, from Maven Central, to compile against only. At run time the API is the copy the
     // ZAS³ jar nests, and a second copy on the classpath would be a second module of the same name.
     compileOnly "io.github.west3436:zas-api:${zasVersion}"
-    localRuntime "zas-release:zas:${zasVersion}"
+    localRuntime "zas-release:zas:${zasRunVersion}"
     // The GameTests that move ZAS³'s own blocks (#10) reach into its content mod, which ships in
     // that jar, to fill pipes and link devices. Only the GameTests compile against it.
     gametestCompileOnly "zas-release:zas:${zasVersion}"
