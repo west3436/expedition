@@ -90,7 +90,7 @@ public record MoveSettings(int workPerTick, long nanosPerTick, RelocationHandove
     }
 
     /**
-     * These settings for a move a player started: with a {@link ClaimCheck} for them added to the
+     * These settings for a move a player started: with a {@link ClaimMoveCheck} for them added to the
      * checks, so the move is refused with {@link MoveRefusal#CLAIMED} where they may not build. A
      * move with no player, such as one from the console, has no such check.
      *
@@ -102,7 +102,7 @@ public record MoveSettings(int workPerTick, long nanosPerTick, RelocationHandove
             return this;
         }
         List<MoveCheck> withClaims = new ArrayList<>(checks);
-        withClaims.add(new ClaimCheck(player));
+        withClaims.add(new ClaimMoveCheck(player));
         return withChecks(withClaims);
     }
 

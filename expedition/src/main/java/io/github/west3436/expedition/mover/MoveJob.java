@@ -1,6 +1,7 @@
 package io.github.west3436.expedition.mover;
 
 import io.github.west3436.expedition.ship.BlockWeights;
+import io.github.west3436.ss13.tick.TickBudget;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
