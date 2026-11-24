@@ -4,6 +4,8 @@ import io.github.west3436.expedition.ExpeditionMod;
 import io.github.west3436.expedition.mover.ShipSurvey;
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
 import io.github.west3436.expedition.ship.ShipMass;
+import io.github.west3436.ss13.api.structure.Dismantling;
+import io.github.west3436.ss13.api.structure.StructureTags;
 import io.github.west3436.zas.engine.Face;
 import io.github.west3436.zas.engine.Geometry;
 import io.github.west3436.zas.geometry.Geometries;
@@ -21,7 +23,8 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 /**
  * The Ship Hull blocks (#55): a box of Ship Hull weighs half the same box of stone, and of Composite
  * Ship Hull a quarter, by the ship computer's count and the mover's alike; and ZAS³ gives both a
- * transmittance of 0 and seals every face, as it does its station wall.
+ * transmittance of 0 and seals every face, as it does its station wall. Both are walls to SS13
+ * Framework ({@code ss13_framework:walls}), so its welder and NT Engineering's RCD take them apart.
  */
 @GameTestHolder(ExpeditionMod.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -44,6 +47,23 @@ public final class ShipHullTests {
         near(stone / 2, hull, "the box of Ship Hull");
         double composite = fill(h, ExpeditionBlocks.COMPOSITE_SHIP_HULL.get());
         near(stone / 4, composite, "the box of Composite Ship Hull");
+        h.succeed();
+    }
+
+    /** Both hulls are in {@code ss13_framework:walls}, so the framework's tools can take them apart. */
+    @GameTest(template = "empty")
+    public static void hulls_are_walls_to_the_framework(GameTestHelper h) {
+        for (Block block : new Block[] {ExpeditionBlocks.SHIP_HULL.get(), ExpeditionBlocks.COMPOSITE_SHIP_HULL.get()}) {
+            BlockState state = block.defaultBlockState();
+            check(state.is(StructureTags.WALLS), state + " isn't in ss13_framework:walls");
+            check(!state.is(StructureTags.REINFORCED_WALLS), state + " is a reinforced wall");
+            h.setBlock(FROM, state);
+            check(
+                    Dismantling.canTakeApart(h.getLevel(), h.absolutePos(FROM)),
+                    "the framework can't take " + state + " apart");
+        }
+        h.setBlock(FROM, Blocks.STONE);
+        check(!Dismantling.canTakeApart(h.getLevel(), h.absolutePos(FROM)), "the framework takes stone apart");
         h.succeed();
     }
 

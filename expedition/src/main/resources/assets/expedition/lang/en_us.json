@@ -208,5 +208,6 @@
   "expedition.shuttle_computer.thrust": "Thrust",
   "expedition.shuttle_computer.unnamed": "Unnamed ship",
   "expedition.transit.no_building": "Nothing can be built outside the ship in transit.",
-  "expedition.transit.stepped_outside": "You stepped outside the ship, into Space."
+  "expedition.transit.stepped_outside": "You stepped outside the ship, into Space.",
+  "item.expedition.shuttle_computer_board": "Shuttle Computer Board"
 }

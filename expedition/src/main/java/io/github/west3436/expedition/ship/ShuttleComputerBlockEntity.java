@@ -1,6 +1,8 @@
 package io.github.west3436.expedition.ship;
 
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
+import io.github.west3436.ss13.api.construction.InstalledParts;
+import io.github.west3436.ss13.api.construction.PartHolder;
 import io.github.west3436.ss13.api.label.Labelled;
 import io.github.west3436.ss13.api.label.Labels;
 import io.github.west3436.ss13.device.DeviceBlockEntity;
@@ -32,10 +34,16 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * ship is renamed or moves: its box is an SS13 Framework area with that id ({@link ShipAreas}). A
  * computer saved before it had one is given one when it loads.
  *
+ * <p>It is built from SS13 Framework's computer frame with its board, {@code
+ * expedition:shuttle_computer_board} ({@link PartHolder}), and keeps that board ({@link
+ * #installedParts()}), saved under {@code Parts}: a screwdriver takes its screen off, leaving the frame
+ * with the board in it. A computer has no maintenance panel, so {@link #panelOpen()} is always false.
+ * One crafted by its plain recipe holds the board as well, from when it is placed.
+ *
  * <p>Its save format, by version: 1, from before the device base, kept the name under {@code name}
  * ({@link DeviceData#FIRST_FORMAT}); 2 keeps it as the label.
  */
-public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implements Labelled {
+public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implements Labelled, PartHolder {
     /**
      * The steps that bring an older save forward: version 0, with no version, is read as version 1,
      * and version 1's {@code name} becomes version 2's {@code Label}.
@@ -50,6 +58,8 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
 
     private static final String SHIP_ID_KEY = "ship_id";
 
+    private static final String PARTS_KEY = "Parts";
+
     private UUID shipId = UUID.randomUUID();
 
     /** Whether the ship's id was made at load, as its save had none, so the chunk must save it. */
@@ -61,6 +71,7 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
     private Optional<UUID> owner = Optional.empty();
     private String ownerName = "";
     private ShipBox box = ShipBox.NONE;
+    private InstalledParts parts = InstalledParts.EMPTY;
 
     /**
      * A computer's block entity.
@@ -156,6 +167,45 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         }
     }
 
+    /**
+     * The board in the computer, which a computer frame put in, or placing it did.
+     *
+     * @return the board, {@link InstalledParts#EMPTY} if none has been installed
+     */
+    @Override
+    public InstalledParts installedParts() {
+        return parts;
+    }
+
+    /**
+     * Replaces the board in the computer, as SS13 Framework builds or opens it.
+     *
+     * @param parts the board, and no parts: a computer takes none
+     */
+    @Override
+    public void installParts(InstalledParts parts) {
+        this.parts = parts;
+        setChanged();
+    }
+
+    /**
+     * A computer has no maintenance panel.
+     *
+     * @return false
+     */
+    @Override
+    public boolean panelOpen() {
+        return false;
+    }
+
+    /**
+     * Does nothing: a computer has no maintenance panel to open.
+     *
+     * @param open ignored
+     */
+    @Override
+    public void setPanelOpen(boolean open) {}
+
     /** Also says the ship's area was renamed, when a label changed its name. */
     @Override
     public void setChanged() {
@@ -248,6 +298,9 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         owner.ifPresent(id -> tag.putUUID("owner", id));
         tag.putString("owner_name", ownerName);
         tag.put("box", box.save());
+        if (!parts.isEmpty()) {
+            tag.put(PARTS_KEY, parts.save(registries));
+        }
     }
 
     @Override
@@ -261,5 +314,6 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         owner = tag.hasUUID("owner") ? Optional.of(tag.getUUID("owner")) : Optional.empty();
         ownerName = tag.getString("owner_name");
         box = ShipBox.load(tag.getCompound("box"));
+        parts = InstalledParts.load(tag.get(PARTS_KEY), registries);
     }
 }
