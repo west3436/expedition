@@ -69,9 +69,6 @@ origin: original
 path: expedition/src/main/resources/assets/expedition/blockstates/shuttle_computer.json
 origin: original
 
-path: expedition/src/main/resources/assets/expedition/models/block/shuttle_computer.json
-origin: original
-
 path: expedition/src/main/resources/assets/expedition/models/item/shuttle_computer.json
 origin: original
 
@@ -79,18 +76,49 @@ path: expedition/src/main/resources/assets/expedition/models/item/shuttle_comput
 origin: original
 notes: Uses SS13 Framework's circuit board texture, ss13_framework:item/circuit_board.
 
-path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_front.png
+path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer.png
 origin: vgstation13
 source: icons/obj/computer.dmi
 state: shuttle
 commit: e8a375269b9c16d7c62ed2c357c23e7bd2437ed3
-adapted: Redrawn at 16x16 in the sprite's palette: its screen, shuttle sign, status lines and keyboard, recomposed as a flat console face.
+notes: The console's screen, 32 x 32, laid out as ZAS³'s central_atmos_controller.png (zas-cubed 23f25f386f7a, from vg's alert:0): its casing rows kept; the monitor's bezel and display (rows 2 to 16) and the keyboard's keys (rows 21 and 22) from vg's shuttle state at 1 texel a pixel, the display's edges repeated to fill the wider monitor.
+
+path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_front.png
+origin: vgstation13
+source: icons/obj/computer.dmi
+state: alert:0
+commit: 23f25f386f7a6c75b1a604029848d798e8b7ec06
+notes: ZAS³'s central_atmos_controller_front.png, unchanged: the console's casing in vg's grey.
 
 path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_side.png
-origin: original
+origin: vgstation13
+source: icons/obj/computer.dmi
+state: alert:0
+commit: 23f25f386f7a6c75b1a604029848d798e8b7ec06
+notes: ZAS³'s central_atmos_controller_side.png, unchanged: the console's sides, with vg's red power cable.
 
-path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_top.png
+path: expedition/src/main/resources/assets/expedition/textures/block/shuttle_computer_back.png
+origin: vgstation13
+source: icons/obj/computer.dmi
+state: alert:0
+commit: 23f25f386f7a6c75b1a604029848d798e8b7ec06
+notes: ZAS³'s central_atmos_controller_back.png, unchanged: the console's back, with vents.
+
+path: expedition/src/main/resources/assets/expedition/models/block/shuttle_computer_lower_left.json
 origin: original
+notes: One block of a 2 x 2 console the same shape as ZAS³'s Central Atmospherics Controller: ZAS³'s central_atmos_controller_lower_left.json with the Shuttle Computer's textures.
+
+path: expedition/src/main/resources/assets/expedition/models/block/shuttle_computer_lower_right.json
+origin: original
+notes: One block of a 2 x 2 console the same shape as ZAS³'s Central Atmospherics Controller: ZAS³'s central_atmos_controller_lower_right.json with the Shuttle Computer's textures.
+
+path: expedition/src/main/resources/assets/expedition/models/block/shuttle_computer_upper_left.json
+origin: original
+notes: One block of a 2 x 2 console the same shape as ZAS³'s Central Atmospherics Controller: ZAS³'s central_atmos_controller_upper_left.json with the Shuttle Computer's textures.
+
+path: expedition/src/main/resources/assets/expedition/models/block/shuttle_computer_upper_right.json
+origin: original
+notes: One block of a 2 x 2 console the same shape as ZAS³'s Central Atmospherics Controller: ZAS³'s central_atmos_controller_upper_right.json with the Shuttle Computer's textures.
 
 path: expedition/src/main/resources/assets/expedition/blockstates/gas_thruster.json
 origin: original

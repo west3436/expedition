@@ -27,7 +27,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -51,6 +50,11 @@ public final class ShuttleComputerTests {
         ServerLevel level = h.getLevel();
         Player player = h.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         BlockPos rel = new BlockPos(2, 2, 2);
+        // The test's template is a single block, so the space the box reaches into is cleared
+        // first: the tests beside it build there too.
+        for (BlockPos p : BlockPos.betweenClosed(rel.offset(-2, 0, -3), rel.offset(2, 2, 1))) {
+            h.setBlock(p, Blocks.AIR);
+        }
         ShuttleComputerBlockEntity computer = place(h, rel, Direction.NORTH);
         BlockPos pos = computer.getBlockPos();
         BlockState state = level.getBlockState(pos);
@@ -58,10 +62,12 @@ public final class ShuttleComputerTests {
                 .setPlacedBy(level, pos, state, player, new ItemStack(ExpeditionBlocks.SHUTTLE_COMPUTER_ITEM.get()));
         check(player.getUUID().equals(computer.owner().orElse(null)), "the placer isn't the owner");
 
-        // The computer alone: its own weight, 1, and no thrust.
+        // The computer alone: its four blocks, the console growing up and to the pilot's right
+        // (west), each weighing 1, and no thrust.
         ShipStatus alone = ShipComputers.status(level, computer);
-        check(alone.world().equals(BoundingBox.fromCorners(pos, pos)), "the box isn't the computer: " + alone.world());
-        near(1, alone.mass(), "the computer alone");
+        BoundingBox console = BoundingBox.fromCorners(pos, pos.west().above());
+        check(alone.world().equals(console), "the box isn't the computer: " + alone.world());
+        near(4, alone.mass(), "the computer alone");
         near(0, alone.thrust(), "thrust with no drives");
         check(alone.drives() == 0, "drives with none");
 
@@ -69,11 +75,17 @@ public final class ShuttleComputerTests {
         h.setBlock(rel.north(), Blocks.IRON_BLOCK);
         h.setBlock(rel.north(2), Blocks.IRON_BLOCK);
         h.setBlock(rel.east(), Blocks.OAK_PLANKS);
+        // A box that would cut the console is grown to hold it: right and up at least 1.
         ShipComputers.setBox(computer, new ShipBox(2, 0, 1, 0, 0, 0));
+        check(computer.box().equals(new ShipBox(2, 0, 1, 1, 1, 0)), "the box is " + computer.box());
         ShipStatus status = ShipComputers.status(level, computer);
-        BoundingBox expected = BoundingBox.fromCorners(pos.north(2), pos.east());
+        BoundingBox expected =
+                BoundingBox.fromCorners(pos.north(2).east(), pos.west().above());
         check(status.world().equals(expected), "the box is " + status.world() + ", not " + expected);
-        near(1 + 4 + 4 + 0.5, status.mass(), "the ship");
+        near(
+                4 + 4 + 4 + 0.5,
+                status.mass(),
+                "the ship: " + ShipMass.of(level, expected) + " by ShipMass in " + expected);
         near(ShipMass.of(level, expected), status.mass(), "the ship against ShipMass");
         check(status.terrain() == 0, "terrain where there is none");
         check(status.overlap().isEmpty(), "an overlap with no other ship");
@@ -100,9 +112,11 @@ public final class ShuttleComputerTests {
         h.setBlock(rel.west(2), Blocks.OAK_PLANKS);
 
         Optional<Integer> fitted = ShipComputers.fit(level, computer);
-        check(fitted.equals(Optional.of(6)), "fitted to " + fitted + " blocks, not 6");
+        // The computer's four blocks, the console reaching up and east, and five more.
+        check(fitted.equals(Optional.of(9)), "fitted to " + fitted + " blocks, not 9");
         BlockPos pos = computer.getBlockPos();
-        BoundingBox expected = BoundingBox.fromCorners(pos.below().west(2), pos.above());
+        BoundingBox expected =
+                BoundingBox.fromCorners(pos.below().west(2), pos.above().east());
         check(computer.worldBox().equals(expected), "fitted to " + computer.worldBox() + ", not " + expected);
         ShipStatus status = ShipComputers.status(level, computer);
         check(status.terrain() == 0, "the fitted box holds ground");
@@ -111,8 +125,9 @@ public final class ShuttleComputerTests {
         ShipBox box = computer.box();
         ShipComputers.setBox(computer, new ShipBox(box.front(), box.back(), box.left(), box.right(), box.up(), 2));
         ShipStatus grounded = ShipComputers.status(level, computer);
-        check(grounded.terrain() == 3, "the box holds " + grounded.terrain() + " ground blocks, not 3");
-        near(status.mass() + 3, grounded.mass(), "the ship with ground");
+        // The four stone blocks under the box, which reaches east over the console's right column.
+        check(grounded.terrain() == 4, "the box holds " + grounded.terrain() + " ground blocks, not 4");
+        near(status.mass() + 4, grounded.mass(), "the ship with ground");
         h.succeed();
     }
 
@@ -233,16 +248,7 @@ public final class ShuttleComputerTests {
 
     /** Places a computer facing a way, at a position relative to the test. */
     private static ShuttleComputerBlockEntity place(GameTestHelper h, BlockPos rel, Direction facing) {
-        h.setBlock(
-                rel,
-                ExpeditionBlocks.SHUTTLE_COMPUTER
-                        .get()
-                        .defaultBlockState()
-                        .setValue(HorizontalDirectionalBlock.FACING, facing));
-        if (!(h.getBlockEntity(rel) instanceof ShuttleComputerBlockEntity computer)) {
-            throw new GameTestAssertException("no computer's block entity at " + rel);
-        }
-        return computer;
+        return TestComputers.place(h, rel, facing);
     }
 
     private static void near(double expected, double actual, String what) {

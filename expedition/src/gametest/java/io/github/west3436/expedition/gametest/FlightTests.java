@@ -44,7 +44,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DirectionalBlock;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -467,7 +466,8 @@ public final class FlightTests {
 
     /** The ship's box, with its cabin's lowest corner at {@code corner}. */
     private static BoundingBox box(BlockPos corner) {
-        return BoundingBox.fromCorners(corner, corner.offset(SIDE - 1, SIDE, SIDE - 1));
+        // Up to the top of the computer, a 2 x 2 console on the roof.
+        return BoundingBox.fromCorners(corner, corner.offset(SIDE - 1, SIDE + 1, SIDE - 1));
     }
 
     /** The pilot, who owns every computer the tests build. */
@@ -492,13 +492,7 @@ public final class FlightTests {
                 }
             }
         }
-        level.setBlock(
-                corner.offset(COMPUTER),
-                ExpeditionBlocks.SHUTTLE_COMPUTER
-                        .get()
-                        .defaultBlockState()
-                        .setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH),
-                Block.UPDATE_ALL);
+        TestComputers.place(level, corner.offset(COMPUTER), Direction.NORTH);
         level.setBlock(
                 corner.offset(THRUSTER),
                 ExpeditionBlocks.GAS_THRUSTER
