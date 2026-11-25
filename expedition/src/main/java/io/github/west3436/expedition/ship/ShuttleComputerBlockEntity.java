@@ -1,6 +1,8 @@
 package io.github.west3436.expedition.ship;
 
 import io.github.west3436.expedition.ExpeditionMod;
+import io.github.west3436.expedition.mover.CabinAir;
+import io.github.west3436.expedition.mover.ShipMover;
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
 import io.github.west3436.ss13.api.console.ConsoleBlock;
 import io.github.west3436.ss13.api.construction.InstalledParts;
@@ -10,9 +12,12 @@ import io.github.west3436.ss13.api.label.Labels;
 import io.github.west3436.ss13.device.DeviceBlockEntity;
 import io.github.west3436.ss13.device.DeviceData;
 import io.github.west3436.zas.api.mutation.SourceId;
+import io.github.west3436.zas.api.mutation.ZonePins;
+import io.github.west3436.zas.api.relocation.Relocations;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -25,6 +30,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A Shuttle Computer's state: its ship's name, owner and box. It is saved with the block, and moves
@@ -44,6 +50,13 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * #installedParts()}), saved under {@code Parts}: a screwdriver takes its screen off, leaving the frame
  * with the board in it. A computer has no maintenance panel, so {@link #panelOpen()} is always false.
  * One crafted by its plain recipe holds the board as well, from when it is placed.
+ *
+ * <p>It keeps its ship's cabin a ZAS³ zone ({@link #airOwner()}): every enclosed room wholly inside
+ * the box is pinned under the ship's owner, so a cabin whose air matches the open air never
+ * dissolves back into it. Its device step pins the box at its first step, once the computer is
+ * placed, built from a frame or loaded, and again every {@link #PIN_PERIOD} steps, so a room sealed
+ * after the box was set becomes a zone within seconds. Changing the box takes the old pins off before
+ * the new box is pinned. Breaking the computer takes them off ({@link ShuttleComputerBlock}).
  *
  * <p>Its save format, by version: 1, from before the device base, kept the name under {@code name}
  * ({@link DeviceData#FIRST_FORMAT}); 2 keeps it as the label.
@@ -65,6 +78,19 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
 
     private static final String PARTS_KEY = "Parts";
 
+    /**
+     * How many device steps, a second each, between the pins of the cabin: a room sealed after the
+     * box was set, which ZAS³ gives no zone of its own, is pinned within this many seconds.
+     */
+    public static final int PIN_PERIOD = 5;
+
+    /**
+     * The most blocks a box may hold for the computer to pin its rooms, whatever the server's ceiling
+     * on a ship's box: walking more every few seconds would cost too much. A larger ship's cabin is
+     * still pinned as it takes off.
+     */
+    public static final long PIN_MAX_VOLUME = 1L << 20;
+
     private UUID shipId = UUID.randomUUID();
 
     /** Whether the ship's id was made at load, as its save had none, so the chunk must save it. */
@@ -77,6 +103,12 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
     private String ownerName = "";
     private ShipBox box = ShipBox.CONSOLE;
     private InstalledParts parts = InstalledParts.EMPTY;
+
+    /** Device steps until the cabin is pinned again; at 0 or less, the next step pins it. */
+    private int pinIn;
+
+    /** The unpin of the old box's pins, while it hasn't been applied: no pin goes ahead of it. */
+    private @Nullable CompletableFuture<Void> unpinning;
 
     /**
      * A computer's block entity.
@@ -99,11 +131,12 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
     }
 
     /**
-     * Who pins the ship's cabin air in ZAS³: {@code expedition:ship/<ship id>}. A flight pins every
-     * enclosed room of the ship under it as it leaves ({@link
-     * io.github.west3436.expedition.mover.ZasRelocationHandover#keeping}), so the cabin's zone goes
-     * with the ship and stays, even when its air matches the open air where it lands. The pins come
-     * off when the computer is broken.
+     * Who pins the ship's cabin air in ZAS³: {@code expedition:ship/<ship id>}. The computer pins
+     * every enclosed room of its box under it for as long as it has the box, and a flight pins them
+     * again as it leaves ({@link io.github.west3436.expedition.mover.ZasRelocationHandover#keeping}),
+     * so the cabin is a zone from when it is sealed, goes with the ship and stays one, even when its
+     * air matches the open air. The pins come off when the box changes, before the new box is pinned,
+     * and when the computer is broken.
      *
      * @return the owner
      */
@@ -181,6 +214,8 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
 
     /**
      * Sets the ship's box, grown if it must be to hold the whole console ({@link ShipBox#holdingConsole}).
+     * If that moves the box, the old box's cabin pins come off and, once ZAS³ has taken them off, the
+     * new box's rooms are pinned.
      *
      * @param box the box
      */
@@ -192,7 +227,43 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         if (!after.equals(before)) {
             ShipAreas.changed(this, before);
             ShipAreas.changed(this, after);
+            if (level instanceof ServerLevel server) {
+                repinCabin(server);
+            }
         }
+    }
+
+    /** Takes the cabin's pins off, then pins the box as it is now once they are off. */
+    private void repinCabin(ServerLevel server) {
+        CompletableFuture<Void> unpinned = ZonePins.unpin(server, airOwner());
+        unpinning = unpinned;
+        unpinned.whenComplete((done, error) -> {
+            // Only the last box change pins: an earlier one's box is gone.
+            if (unpinning == unpinned) {
+                unpinning = null;
+                pinCabin(server);
+            }
+        });
+    }
+
+    /**
+     * Pins every enclosed room wholly inside the box under the ship's owner ({@link CabinAir#pin}),
+     * and counts down to the next time. A pin is idempotent, so pinning a room already pinned costs
+     * ZAS³ nothing, and a room that is open pins nothing until it is sealed. Skipped while the box is
+     * being moved, as its air may not have arrived, and for a box over the server's ceiling, which
+     * can't move, or over {@link #PIN_MAX_VOLUME}, which would cost too much to walk.
+     */
+    private void pinCabin(ServerLevel server) {
+        pinIn = PIN_PERIOD;
+        BoundingBox box = worldBox();
+        if (isRemoved()
+                || level != server
+                || Relocations.isMoving(server, worldPosition)
+                || (long) box.getXSpan() * box.getYSpan() * box.getZSpan() > PIN_MAX_VOLUME
+                || ShipMover.ceiling().exceeds(box)) {
+            return;
+        }
+        CabinAir.pin(server, box, airOwner(), true);
     }
 
     /**
@@ -326,9 +397,19 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         return FORMAT;
     }
 
-    /** Nothing yet: the computer's work is done when a pilot asks for it. */
+    /**
+     * Keeps the cabin pinned: pins it at the first step, as the computer is placed, built or loaded,
+     * and every {@link #PIN_PERIOD} steps after, except while a box change's unpin is still on its
+     * way. ZAS³ keeps pins with their zones through a save and a load, a breach and a reseal, so the
+     * steps after the first only matter for a room sealed since. The rest of the computer's work is
+     * done when a pilot asks for it.
+     */
     @Override
-    protected void deviceTick(ServerLevel level) {}
+    protected void deviceTick(ServerLevel level) {
+        if (unpinning == null && --pinIn <= 0) {
+            pinCabin(level);
+        }
+    }
 
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {

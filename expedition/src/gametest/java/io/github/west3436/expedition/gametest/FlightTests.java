@@ -21,6 +21,7 @@ import io.github.west3436.zas.api.mutation.GasMutations;
 import io.github.west3436.zas.api.mutation.MutationOutcome;
 import io.github.west3436.zas.api.mutation.MutationResult;
 import io.github.west3436.zas.api.mutation.SourceId;
+import io.github.west3436.zas.api.mutation.ZonePins;
 import io.github.west3436.zas.api.relocation.Relocations;
 import java.util.Comparator;
 import java.util.Map;
@@ -81,6 +82,9 @@ public final class FlightTests {
 
     /** As the other far tests: a far chunk's entities load in real time, which can be slow. */
     private static final int TIMEOUT = 20_000;
+
+    /** The tests of a cabin's pins on the ground, which wait out ZAS³'s minute once or twice. */
+    private static final int PIN_TIMEOUT = 6_000;
 
     private static final TicketType<ChunkPos> HELD =
             TicketType.create("expedition_gametest_flight", Comparator.comparingLong(ChunkPos::toLong), TIMEOUT);
@@ -231,9 +235,10 @@ public final class FlightTests {
     /**
      * The 0.1.0 hand test's cabin: sealed, but holding only the Overworld's own air, so ZAS³ gives
      * it no zone (it dissolves a sealed room that matches the open air, CORE-052). It used to arrive
-     * on the Moon as vacuum, and read "open air" at home again. Now the flight pins the cabin under
-     * the ship's owner as it leaves: it arrives on the Moon as a zone of the air it left with, and
-     * home again it stays a zone past the minute ZAS³ would otherwise dissolve it after.
+     * on the Moon as vacuum, and read "open air" at home again. Now the computer pins the cabin under
+     * the ship's owner from when it has its box, and the flight pins it again as it leaves: it is a
+     * zone of the open air's gas before the launch, arrives on the Moon as a zone of the air it left
+     * with, and home again it stays a zone past the minute ZAS³ would otherwise dissolve it after.
      */
     @GameTest(template = "empty", batch = GATE, timeoutTicks = TIMEOUT)
     public static void a_cabin_of_plain_air_keeps_it_there_and_back(GameTestHelper h) {
@@ -258,14 +263,12 @@ public final class FlightTests {
                     wipe(moon, new BoundingBox(350, 121, 350, 362, 130, 362));
                     build(overworld, a);
                 })
-                // No gas is added: the cabin is the open air's, with no zone, as ZAS³ leaves it.
-                .thenWaitUntil(() -> h.assertTrue(
-                        Atmospheres.zoneAt(overworld, Vec3.atCenterOf(middle(a)))
-                                .isEmpty(),
-                        "the cabin of plain air is still a zone"))
+                // No gas is added: the cabin is a zone of the open air's gas, which the computer pins.
+                .thenWaitUntil(() -> zone(h, overworld, a))
                 .thenExecute(() -> {
-                    outside[0] = Atmospheres.at(overworld, middle(a)).pressure();
+                    outside[0] = openAir(overworld, a);
                     h.assertTrue(outside[0] > 90, "the Overworld's air is " + outside[0] + " kPa");
+                    plainAir(h, zone(h, overworld, a), outside[0], "before the launch");
                     ShuttleComputerBlockEntity computer = computer(h, overworld, a);
                     run.flight =
                             Flights.launch(overworld, computer, FlightOrder.land(MOON, 356, 356), pilot(overworld));
@@ -311,6 +314,125 @@ public final class FlightTests {
         h.assertTrue(zone.cellCount() == CELLS, where + ": the cabin has " + zone.cellCount() + " cells");
         double p = zone.mixture().pressure();
         h.assertTrue(Math.abs(p - outside) < 1, where + ": the cabin is at " + p + " kPa, not " + outside);
+    }
+
+    // ---- The cabin's pins, on the ground ------------------------------------------------
+
+    /**
+     * The 0.1.0 hand test again, before any flight: a sealed cabin of plain air, on a ship whose
+     * computer has its box, is a zone, and still one well past the minute after which ZAS³ dissolves
+     * an unpinned room that matches the open air (CORE-052). The computer pins it.
+     */
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = PIN_TIMEOUT)
+    public static void a_ships_sealed_cabin_of_plain_air_is_a_zone_without_flying(GameTestHelper h) {
+        ServerLevel overworld = h.getLevel();
+        BlockPos a = area(6);
+        h.startSequence()
+                .thenWaitUntil(() -> hold(h, overworld, box(a)))
+                .thenExecute(() -> build(overworld, a))
+                .thenIdle(70 * 20)
+                .thenExecute(() -> {
+                    plainAir(h, zone(h, overworld, a), openAir(overworld, a), "70 s after it was built");
+                    wipe(overworld, box(a));
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * Changing the box takes the old box's pins off: with a box of the computer alone, the cabin
+     * dissolves into the open air after ZAS³'s minute. Fitting the box to the ship pins it again, and
+     * it stays a zone past that minute.
+     */
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = PIN_TIMEOUT)
+    public static void a_new_box_drops_the_old_pins_and_fitting_the_ship_pins_the_cabin(GameTestHelper h) {
+        ServerLevel overworld = h.getLevel();
+        BlockPos a = area(7);
+        h.startSequence()
+                .thenWaitUntil(() -> hold(h, overworld, box(a)))
+                .thenExecute(() -> build(overworld, a))
+                .thenWaitUntil(() -> zone(h, overworld, a))
+                .thenExecute(() -> ShipComputers.setBox(computer(h, overworld, a, false), ShipBox.CONSOLE))
+                .thenIdle(60 * 20)
+                .thenWaitUntil(() -> noZone(h, overworld, a, "with a box of the computer alone"))
+                .thenExecute(() -> {
+                    ShuttleComputerBlockEntity computer = computer(h, overworld, a, false);
+                    h.assertTrue(
+                            ShipComputers.fit(overworld, computer).isPresent(), "the box wasn't fitted to the ship");
+                    computer(h, overworld, a);
+                })
+                .thenIdle(70 * 20)
+                .thenExecute(() -> {
+                    plainAir(h, zone(h, overworld, a), openAir(overworld, a), "70 s after the box was fitted");
+                    wipe(overworld, box(a));
+                })
+                .thenSucceed();
+    }
+
+    /** Breaking the computer takes its pins off: the cabin goes back to the open air after ZAS³'s minute. */
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = PIN_TIMEOUT)
+    public static void breaking_the_computer_lets_the_cabin_go_back_to_the_open_air(GameTestHelper h) {
+        ServerLevel overworld = h.getLevel();
+        BlockPos a = area(8);
+        h.startSequence()
+                .thenWaitUntil(() -> hold(h, overworld, box(a)))
+                .thenExecute(() -> build(overworld, a))
+                .thenWaitUntil(() -> zone(h, overworld, a))
+                .thenExecute(() -> {
+                    overworld.destroyBlock(a.offset(COMPUTER), false);
+                    h.assertTrue(overworld.getBlockState(a.offset(COMPUTER)).isAir(), "the computer is still there");
+                })
+                .thenIdle(60 * 20)
+                .thenWaitUntil(() -> noZone(h, overworld, a, "with the computer broken"))
+                .thenExecute(() -> wipe(overworld, box(a)))
+                .thenSucceed();
+    }
+
+    /**
+     * A cabin left open when the box is set has nothing to pin, but becomes a zone once it is sealed,
+     * at the computer's next pin. Opened again and shut, it is still a zone of the open air's gas past
+     * ZAS³'s minute: ZAS³ keeps a pinned zone through a breach.
+     */
+    @GameTest(template = "empty", batch = BATCH, timeoutTicks = PIN_TIMEOUT)
+    public static void a_cabin_sealed_after_its_box_is_set_becomes_a_zone_and_stays_one(GameTestHelper h) {
+        ServerLevel overworld = h.getLevel();
+        BlockPos a = area(9);
+        BlockPos hole = a.offset(0, SIDE / 2, SIDE / 2);
+        BlockState hull = ExpeditionBlocks.SHIP_HULL.get().defaultBlockState();
+        h.startSequence()
+                .thenWaitUntil(() -> hold(h, overworld, box(a)))
+                .thenExecute(() -> {
+                    build(overworld, a);
+                    overworld.setBlock(hole, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+                })
+                .thenIdle(3 * ShuttleComputerBlockEntity.PIN_PERIOD * 20)
+                .thenExecute(() -> noZone(h, overworld, a, "open"))
+                .thenExecute(() -> overworld.setBlock(hole, hull, Block.UPDATE_ALL))
+                .thenWaitUntil(() -> zone(h, overworld, a))
+                .thenExecute(() -> overworld.setBlock(hole, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL))
+                .thenIdle(5 * 20)
+                .thenExecute(() -> h.assertTrue(
+                        Atmospheres.zoneAt(overworld, Vec3.atCenterOf(middle(a)))
+                                .isPresent(),
+                        "the cabin isn't a zone while it is open"))
+                .thenExecute(() -> overworld.setBlock(hole, hull, Block.UPDATE_ALL))
+                .thenIdle(70 * 20)
+                .thenExecute(() -> {
+                    plainAir(h, zone(h, overworld, a), openAir(overworld, a), "70 s after it was shut again");
+                    wipe(overworld, box(a));
+                })
+                .thenSucceed();
+    }
+
+    /** The open air's pressure, beside the ship. */
+    private static double openAir(ServerLevel level, BlockPos corner) {
+        return Atmospheres.at(level, corner.offset(-1, 1, -1)).pressure();
+    }
+
+    /** Throws unless the cabin is no zone: the open air's. */
+    private static void noZone(GameTestHelper h, ServerLevel level, BlockPos corner, String when) {
+        h.assertTrue(
+                Atmospheres.zoneAt(level, Vec3.atCenterOf(middle(corner))).isEmpty(),
+                when + ", the cabin is still a zone");
     }
 
     // ---- The rules ----------------------------------------------------------------------
@@ -509,8 +631,16 @@ public final class FlightTests {
     }
 
     private static ShuttleComputerBlockEntity computer(GameTestHelper h, ServerLevel level, BlockPos corner) {
+        return computer(h, level, corner, true);
+    }
+
+    /** The ship's computer, and unless {@code boxed} is false, with the box of the whole ship. */
+    private static ShuttleComputerBlockEntity computer(
+            GameTestHelper h, ServerLevel level, BlockPos corner, boolean boxed) {
         if (level.getBlockEntity(corner.offset(COMPUTER)) instanceof ShuttleComputerBlockEntity computer) {
-            h.assertValueEqual(computer.worldBox(), box(corner), "the computer's box");
+            if (boxed) {
+                h.assertValueEqual(computer.worldBox(), box(corner), "the computer's box");
+            }
             return computer;
         }
         throw new GameTestAssertException("no computer at " + corner.offset(COMPUTER) + " in " + level.dimension());
@@ -627,11 +757,17 @@ public final class FlightTests {
         }
     }
 
-    /** Takes every block out of a box, quietly. */
+    /**
+     * Takes every block out of a box, quietly. A computer's cabin pins come off first, as they would
+     * if it were broken, so the cabin left open doesn't stay a zone.
+     */
     private static void wipe(ServerLevel level, BoundingBox box) {
         for (BlockPos p :
                 BlockPos.betweenClosed(box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ())) {
             LevelChunk chunk = level.getChunkAt(p);
+            if (chunk.getBlockEntity(p) instanceof ShuttleComputerBlockEntity computer) {
+                ZonePins.unpin(level, computer.airOwner());
+            }
             QuietBlocks.takeBlockEntity(level, chunk, p);
             QuietBlocks.set(level, chunk, p, Blocks.AIR.defaultBlockState());
         }
