@@ -13,6 +13,7 @@ import io.github.west3436.expedition.mover.MoveRefusal;
 import io.github.west3436.expedition.mover.MoveRequest;
 import io.github.west3436.expedition.mover.MoveResult;
 import io.github.west3436.expedition.mover.MoveSettings;
+import io.github.west3436.expedition.mover.ZasRelocationHandover;
 import io.github.west3436.expedition.ship.ShipComputers;
 import io.github.west3436.expedition.ship.ShuttleComputerBlockEntity;
 import io.github.west3436.expedition.transit.TransitRoute;
@@ -401,7 +402,9 @@ public final class Flights {
             flight.aboard.add(p.getUUID());
         }
 
-        MoveSettings claims = MoveSettings.DEFAULT.startedBy(pilot);
+        // The cabin keeps its air pinned under the ship's own owner, wherever it lands.
+        MoveSettings ship = MoveSettings.DEFAULT.withHandover(ZasRelocationHandover.keeping(computer.airOwner()));
+        MoveSettings claims = ship.startedBy(pilot);
         List<MoveCheck> checks = new ArrayList<>(claims.checks());
         checks.add(new Burn(level, flight.computer, plan.plot().get()));
         TransitTrip trip = Transits.depart(level, box, route, claims.withChecks(checks));
@@ -413,7 +416,7 @@ public final class Flights {
             return;
         }
         CompletableFuture<MoveResult> arrival =
-                Transits.arrive(trip, to, plan.origin(), now + plan.ticks(), MoveSettings.DEFAULT.startedBy(pilot));
+                Transits.arrive(trip, to, plan.origin(), now + plan.ticks(), ship.startedBy(pilot));
         FLYING.put(trip.id(), flight);
         FlightData data = data(server);
         data.flights.put(trip.id(), new FlightData.Entry(Optional.ofNullable(flight.pilot), 0));

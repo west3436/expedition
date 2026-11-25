@@ -1,6 +1,7 @@
 package io.github.west3436.expedition.ship;
 
 import com.mojang.serialization.MapCodec;
+import io.github.west3436.zas.api.mutation.ZonePins;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -70,6 +71,21 @@ public final class ShuttleComputerBlock extends HorizontalDirectionalBlock imple
                 && level.getBlockEntity(pos) instanceof ShuttleComputerBlockEntity computer) {
             computer.setOwner(player.getUUID(), player.getGameProfile().getName());
         }
+    }
+
+    /**
+     * Takes the ship's cabin pins off when the computer is broken or replaced, so its cabin can go
+     * back to the open air as any room does. A ship's move doesn't come here: the mover carries the
+     * computer without removing it.
+     */
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock())
+                && level instanceof ServerLevel server
+                && level.getBlockEntity(pos) instanceof ShuttleComputerBlockEntity computer) {
+            ZonePins.unpin(server, computer.airOwner());
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
     }
 
     @Override

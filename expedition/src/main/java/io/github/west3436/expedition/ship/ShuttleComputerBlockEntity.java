@@ -1,5 +1,6 @@
 package io.github.west3436.expedition.ship;
 
+import io.github.west3436.expedition.ExpeditionMod;
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
 import io.github.west3436.ss13.api.construction.InstalledParts;
 import io.github.west3436.ss13.api.construction.PartHolder;
@@ -7,6 +8,7 @@ import io.github.west3436.ss13.api.label.Labelled;
 import io.github.west3436.ss13.api.label.Labels;
 import io.github.west3436.ss13.device.DeviceBlockEntity;
 import io.github.west3436.ss13.device.DeviceData;
+import io.github.west3436.zas.api.mutation.SourceId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -91,6 +93,29 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
      */
     public UUID shipId() {
         return shipId;
+    }
+
+    /**
+     * Who pins the ship's cabin air in ZAS³: {@code expedition:ship/<ship id>}. A flight pins every
+     * enclosed room of the ship under it as it leaves ({@link
+     * io.github.west3436.expedition.mover.ZasRelocationHandover#keeping}), so the cabin's zone goes
+     * with the ship and stays, even when its air matches the open air where it lands. The pins come
+     * off when the computer is broken.
+     *
+     * @return the owner
+     */
+    public SourceId airOwner() {
+        return airOwner(shipId);
+    }
+
+    /**
+     * The owner of a ship's cabin pins ({@link #airOwner()}).
+     *
+     * @param shipId the ship's id
+     * @return the owner
+     */
+    public static SourceId airOwner(UUID shipId) {
+        return SourceId.of(ExpeditionMod.MOD_ID, "ship/" + shipId);
     }
 
     /**
