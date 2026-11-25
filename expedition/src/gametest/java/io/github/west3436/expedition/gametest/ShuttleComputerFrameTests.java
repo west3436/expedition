@@ -6,6 +6,7 @@ import io.github.west3436.expedition.registry.ExpeditionBlocks;
 import io.github.west3436.expedition.ship.ShipComputers;
 import io.github.west3436.expedition.ship.ShipStatus;
 import io.github.west3436.expedition.ship.ShuttleComputerBlockEntity;
+import io.github.west3436.ss13.api.console.ConsoleBlock;
 import io.github.west3436.ss13.api.construction.InstalledParts;
 import io.github.west3436.ss13.api.construction.MachineBoard;
 import io.github.west3436.ss13.api.construction.MachineBoards;
@@ -29,6 +30,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -75,9 +77,7 @@ public final class ShuttleComputerFrameTests {
      */
     @GameTest(template = "empty")
     public static void a_shuttle_computer_is_built_from_a_frame_and_a_board(GameTestHelper h) {
-        h.setBlock(
-                AT,
-                FrameworkBlocks.COMPUTER_FRAME.get().defaultBlockState().setValue(FrameBlock.FACING, Direction.SOUTH));
+        placeFrame(h, Direction.SOUTH);
         FakePlayer player = builder(h);
 
         use(h, player, FrameworkItems.WRENCH.toStack());
@@ -90,20 +90,18 @@ public final class ShuttleComputerFrameTests {
         assertStage(h, FrameStage.WIRED, "the cable didn't wire the frame");
         use(h, player, FrameworkItems.CONSOLE_SCREEN.toStack());
         assertStage(h, FrameStage.SCREEN, "the frame didn't take its screen");
-        use(h, player, FrameworkItems.SCREWDRIVER.toStack());
+        // The frame is a 2 x 2 console: the last step works from any of its blocks, here its upper
+        // right one.
+        use(h, player, upperRight(Direction.SOUTH), FrameworkItems.SCREWDRIVER.toStack());
 
-        h.assertBlockState(
-                AT,
-                s -> s.is(ExpeditionBlocks.SHUTTLE_COMPUTER.get())
-                        && s.getValue(HorizontalDirectionalBlock.FACING) == Direction.SOUTH,
-                () -> "the frame didn't become a Shuttle Computer facing south, but " + h.getBlockState(AT));
+        assertWholeComputer(h, Direction.SOUTH);
         ShuttleComputerBlockEntity computer = computer(h);
         check(computer.installedParts().board().is(ExpeditionBlocks.SHUTTLE_COMPUTER_BOARD.get()), "no board");
         check(computer.installedParts().parts().isEmpty(), "the computer holds parts");
         check(!computer.panelOpen(), "the computer's panel is open");
-        // A working computer: its ship, alone, is the computer, which weighs 1.
+        // A working computer: its ship, alone, is the computer's four blocks.
         ShipStatus status = ShipComputers.status(h.getLevel(), computer);
-        check(status.mass() == 1, "the built computer's ship weighs " + status.mass());
+        check(status.mass() == 4, "the built computer's ship weighs " + status.mass());
         // No one placed it, so the first player to use it owns it, and may launch it.
         check(computer.owner().isEmpty(), "a built computer has an owner before anyone uses it");
         use(h, player, ItemStack.EMPTY);
@@ -121,15 +119,14 @@ public final class ShuttleComputerFrameTests {
                 frame(h).contents().board().is(ExpeditionBlocks.SHUTTLE_COMPUTER_BOARD.get()),
                 "the frame lost the board");
         use(h, player, FrameworkItems.SCREWDRIVER.toStack());
-        h.assertBlockState(
-                AT, s -> s.is(ExpeditionBlocks.SHUTTLE_COMPUTER.get()), () -> "the frame didn't close again");
+        assertWholeComputer(h, Direction.SOUTH);
         h.succeed();
     }
 
     /** A board for something else is refused, and the frame stays empty. */
     @GameTest(template = "empty")
     public static void a_blank_board_builds_nothing(GameTestHelper h) {
-        h.setBlock(AT, FrameworkBlocks.COMPUTER_FRAME.get());
+        placeFrame(h, Direction.NORTH);
         FakePlayer player = builder(h);
         use(h, player, FrameworkItems.WRENCH.toStack());
         use(h, player, FrameworkItems.CIRCUIT_BOARD.toStack());
@@ -145,10 +142,18 @@ public final class ShuttleComputerFrameTests {
     public static void a_crafted_computer_holds_its_board(GameTestHelper h) {
         FakePlayer player = builder(h);
         h.setBlock(AT.below(), Blocks.STONE);
-        h.setBlock(AT, Blocks.AIR);
+        String before = "";
+        for (BlockPos p : ConsoleBlock.parts(h.absolutePos(AT), Direction.SOUTH)) {
+            before += " " + h.getLevel().getBlockState(p);
+            h.getLevel().setBlock(p, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+        }
+        String was = before;
         BlockPos below = h.absolutePos(AT.below());
         ItemStack item = new ItemStack(ExpeditionBlocks.SHUTTLE_COMPUTER_ITEM.get());
         player.setItemInHand(InteractionHand.MAIN_HAND, item);
+        // Standing south of the spot and looking north, so the console faces south and grows east
+        // and up, inside the test's area.
+        player.moveTo(Vec3.atBottomCenterOf(h.absolutePos(AT.south(3))), 180, 0);
         var result = player.gameMode.useItemOn(
                 player,
                 h.getLevel(),
@@ -158,7 +163,9 @@ public final class ShuttleComputerFrameTests {
         h.assertBlockState(
                 AT,
                 s -> s.is(ExpeditionBlocks.SHUTTLE_COMPUTER.get()),
-                () -> "placing gave " + result + " and left " + h.getBlockState(AT));
+                () -> "placing gave " + result + " and left " + h.getBlockState(AT) + "; room facing south: "
+                        + ConsoleBlock.hasRoom(h.getLevel(), h.absolutePos(AT), Direction.SOUTH)
+                        + ", the player faces " + player.getDirection() + "; its four spaces held" + was);
         ShuttleComputerBlockEntity computer = computer(h);
         check(computer.owner().equals(Optional.of(player.getUUID())), "the placer isn't the owner");
         check(
@@ -171,9 +178,26 @@ public final class ShuttleComputerFrameTests {
         copy.loadWithComponents(saved, h.getLevel().registryAccess());
         check(copy.installedParts().equals(computer.installedParts()), "the board wasn't saved");
 
-        h.getLevel().destroyBlock(h.absolutePos(AT), true, player);
+        // Mining any of its four blocks breaks it whole, with one drop: here its upper right one.
+        BlockPos upperRight = ConsoleBlock.parts(
+                        h.absolutePos(AT), computer.getBlockState().getValue(HorizontalDirectionalBlock.FACING))
+                .get(3);
+        h.getLevel().destroyBlock(upperRight, true, player);
+        for (BlockPos p : ConsoleBlock.parts(
+                h.absolutePos(AT), computer.getBlockState().getValue(HorizontalDirectionalBlock.FACING))) {
+            check(
+                    h.getLevel().getBlockState(p).isAir(),
+                    "mining one block left " + h.getLevel().getBlockState(p));
+        }
         List<ItemEntity> drops =
-                h.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(h.absolutePos(AT)).inflate(1.5));
+                h.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(h.absolutePos(AT)).inflate(2.5));
+        check(
+                drops.stream()
+                                .filter(e -> e.getItem().is(ExpeditionBlocks.SHUTTLE_COMPUTER_ITEM.get()))
+                                .mapToInt(e -> e.getItem().getCount())
+                                .sum()
+                        == 1,
+                "the mined computer didn't drop one Shuttle Computer: " + drops);
         ItemEntity mined = drops.stream()
                 .filter(e -> e.getItem().is(ExpeditionBlocks.SHUTTLE_COMPUTER_ITEM.get()))
                 .findFirst()
@@ -190,7 +214,7 @@ public final class ShuttleComputerFrameTests {
     /** A computer saved before it had a board loads with none, and counts as holding its own. */
     @GameTest(template = "empty")
     public static void a_computer_saved_before_boards_loads_with_none(GameTestHelper h) {
-        h.setBlock(AT, ExpeditionBlocks.SHUTTLE_COMPUTER.get());
+        TestComputers.place(h, AT, Direction.NORTH);
         ShuttleComputerBlockEntity computer = computer(h);
         computer.installParts(new InstalledParts(board(), List.of()));
         CompoundTag saved = computer.saveWithoutMetadata(h.getLevel().registryAccess());
@@ -201,6 +225,32 @@ public final class ShuttleComputerFrameTests {
         copy.loadWithComponents(saved, h.getLevel().registryAccess());
         check(copy.installedParts().equals(InstalledParts.EMPTY), "an old computer has " + copy.installedParts());
         h.succeed();
+    }
+
+    /**
+     * A computer saved by Expedition 0.1.0 was one block, and loads as the console's lower left
+     * block alone: it grows into the whole console where there is room, keeping its block entity.
+     */
+    @GameTest(template = "empty")
+    public static void a_one_block_computer_from_0_1_0_grows_into_the_console(GameTestHelper h) {
+        BlockPos at = h.absolutePos(AT);
+        for (BlockPos p : ConsoleBlock.parts(at, Direction.NORTH)) {
+            h.getLevel().setBlock(p, Blocks.AIR.defaultBlockState(), Block.UPDATE_CLIENTS);
+        }
+        h.getLevel()
+                .setBlock(
+                        at,
+                        ExpeditionBlocks.SHUTTLE_COMPUTER
+                                .get()
+                                .defaultBlockState()
+                                .setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH),
+                        Block.UPDATE_CLIENTS);
+        ShuttleComputerBlockEntity computer = computer(h);
+        h.succeedWhen(() -> {
+            check(ConsoleBlock.isWhole(h.getLevel(), at), "the lone computer hasn't grown");
+            check(h.getBlockEntity(AT) == computer, "the computer's block entity was replaced");
+            assertWholeComputer(h, Direction.NORTH);
+        });
     }
 
     // Helpers
@@ -217,9 +267,38 @@ public final class ShuttleComputerFrameTests {
         return player;
     }
 
+    /** Places a whole 2 x 2 computer frame, its lower left block at {@link #AT}. */
+    private static void placeFrame(GameTestHelper h, Direction facing) {
+        ConsoleBlock.placeConsole(
+                h.getLevel(),
+                h.absolutePos(AT),
+                FrameworkBlocks.COMPUTER_FRAME.get().defaultBlockState().setValue(FrameBlock.FACING, facing));
+    }
+
+    /** The upper right block of a console at {@link #AT}, relative to the test. */
+    private static BlockPos upperRight(Direction facing) {
+        return AT.above().relative(ConsoleBlock.toRight(facing));
+    }
+
+    /** All four blocks at {@link #AT} are the Shuttle Computer, facing {@code facing}. */
+    private static void assertWholeComputer(GameTestHelper h, Direction facing) {
+        for (BlockPos p : ConsoleBlock.parts(h.absolutePos(AT), facing)) {
+            BlockState state = h.getLevel().getBlockState(p);
+            check(
+                    state.is(ExpeditionBlocks.SHUTTLE_COMPUTER.get())
+                            && state.getValue(HorizontalDirectionalBlock.FACING) == facing,
+                    "the frame didn't become a whole Shuttle Computer facing " + facing + ": " + p + " is " + state);
+        }
+    }
+
     /** Uses an item on the frame or computer through the server's own use path, as a click does. */
     private static void use(GameTestHelper h, FakePlayer player, ItemStack stack) {
-        BlockPos at = h.absolutePos(AT);
+        use(h, player, AT, stack);
+    }
+
+    /** Uses an item on one block of the frame or computer, relative to the test. */
+    private static void use(GameTestHelper h, FakePlayer player, BlockPos rel, ItemStack stack) {
+        BlockPos at = h.absolutePos(rel);
         player.setItemInHand(InteractionHand.MAIN_HAND, stack);
         player.gameMode.useItemOn(
                 player,

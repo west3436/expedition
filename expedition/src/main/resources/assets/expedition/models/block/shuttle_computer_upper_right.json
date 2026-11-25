@@ -1,0 +1,65 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "screen": "expedition:block/shuttle_computer",
+    "front": "expedition:block/shuttle_computer_front",
+    "side": "expedition:block/shuttle_computer_side",
+    "back": "expedition:block/shuttle_computer_back",
+    "particle": "expedition:block/shuttle_computer_side"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        6
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            8.0,
+            0.0,
+            16.0,
+            8.0
+          ],
+          "texture": "#screen"
+        },
+        "south": {
+          "uv": [
+            0.0,
+            0.0,
+            8.0,
+            8.0
+          ],
+          "texture": "#back",
+          "cullface": "south"
+        },
+        "west": {
+          "uv": [
+            11.0,
+            0.0,
+            16.0,
+            8.0
+          ],
+          "texture": "#side",
+          "cullface": "west"
+        },
+        "up": {
+          "uv": [
+            0.0,
+            3.0,
+            8.0,
+            8.0
+          ],
+          "texture": "#front",
+          "cullface": "up"
+        }
+      }
+    }
+  ]
+}

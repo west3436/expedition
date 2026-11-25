@@ -1,12 +1,15 @@
 package io.github.west3436.expedition.ship;
 
+import io.github.west3436.expedition.ExpeditionMod;
 import io.github.west3436.expedition.registry.ExpeditionBlocks;
+import io.github.west3436.ss13.api.console.ConsoleBlock;
 import io.github.west3436.ss13.api.construction.InstalledParts;
 import io.github.west3436.ss13.api.construction.PartHolder;
 import io.github.west3436.ss13.api.label.Labelled;
 import io.github.west3436.ss13.api.label.Labels;
 import io.github.west3436.ss13.device.DeviceBlockEntity;
 import io.github.west3436.ss13.device.DeviceData;
+import io.github.west3436.zas.api.mutation.SourceId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,6 +18,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
@@ -70,7 +75,7 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
 
     private Optional<UUID> owner = Optional.empty();
     private String ownerName = "";
-    private ShipBox box = ShipBox.NONE;
+    private ShipBox box = ShipBox.CONSOLE;
     private InstalledParts parts = InstalledParts.EMPTY;
 
     /**
@@ -91,6 +96,29 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
      */
     public UUID shipId() {
         return shipId;
+    }
+
+    /**
+     * Who pins the ship's cabin air in ZAS³: {@code expedition:ship/<ship id>}. A flight pins every
+     * enclosed room of the ship under it as it leaves ({@link
+     * io.github.west3436.expedition.mover.ZasRelocationHandover#keeping}), so the cabin's zone goes
+     * with the ship and stays, even when its air matches the open air where it lands. The pins come
+     * off when the computer is broken.
+     *
+     * @return the owner
+     */
+    public SourceId airOwner() {
+        return airOwner(shipId);
+    }
+
+    /**
+     * The owner of a ship's cabin pins ({@link #airOwner()}).
+     *
+     * @param shipId the ship's id
+     * @return the owner
+     */
+    public static SourceId airOwner(UUID shipId) {
+        return SourceId.of(ExpeditionMod.MOD_ID, "ship/" + shipId);
     }
 
     /**
@@ -152,13 +180,13 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
     }
 
     /**
-     * Sets the ship's box.
+     * Sets the ship's box, grown if it must be to hold the whole console ({@link ShipBox#holdingConsole}).
      *
      * @param box the box
      */
     public void setBox(ShipBox box) {
         BoundingBox before = worldBox();
-        this.box = box;
+        this.box = box.holdingConsole();
         setChanged();
         BoundingBox after = worldBox();
         if (!after.equals(before)) {
@@ -272,6 +300,17 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
             shipIdMade = false;
             setChanged();
         }
+        if (level instanceof ServerLevel server) {
+            // A computer saved by Expedition 0.1.0 was one block: it loads as the lower left block
+            // of the console alone. On the next tick, once its chunk has loaded, it grows into the
+            // whole console where the three spaces are free.
+            MinecraftServer host = server.getServer();
+            host.tell(new TickTask(host.getTickCount() + 1, () -> {
+                if (!isRemoved() && server.getBlockEntity(worldPosition) == this) {
+                    ConsoleBlock.completeConsole(server, worldPosition);
+                }
+            }));
+        }
     }
 
     /** A copy of the computer as an item, as a creative player picks, makes a ship of its own. */
@@ -313,7 +352,7 @@ public final class ShuttleComputerBlockEntity extends DeviceBlockEntity implemen
         }
         owner = tag.hasUUID("owner") ? Optional.of(tag.getUUID("owner")) : Optional.empty();
         ownerName = tag.getString("owner_name");
-        box = ShipBox.load(tag.getCompound("box"));
+        box = ShipBox.load(tag.getCompound("box")).holdingConsole();
         parts = InstalledParts.load(tag.get(PARTS_KEY), registries);
     }
 }

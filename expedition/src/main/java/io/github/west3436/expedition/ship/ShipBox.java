@@ -29,6 +29,13 @@ public record ShipBox(int front, int back, int left, int right, int up, int down
     /** The computer alone. */
     public static final ShipBox NONE = new ShipBox(0, 0, 0, 0, 0, 0);
 
+    /**
+     * The whole Shuttle Computer alone: it is a console 2 blocks wide and 2 tall ({@link
+     * ShuttleComputerBlock}), which grows to the pilot's right and up from the block that holds its
+     * box. Every box holds at least this, so the console always moves whole.
+     */
+    public static final ShipBox CONSOLE = new ShipBox(0, 0, 0, 1, 1, 0);
+
     /** The furthest any side may reach: past it a box is far over any ceiling. */
     public static final int MAX_DISTANCE = 1_024;
 
@@ -79,6 +86,15 @@ public record ShipBox(int front, int back, int left, int right, int up, int down
             d[i] = Math.clamp(distances[i], 0, MAX_DISTANCE);
         }
         return new ShipBox(d[0], d[1], d[2], d[3], d[4], d[5]);
+    }
+
+    /**
+     * This box grown, if it must be, to hold the whole Shuttle Computer ({@link #CONSOLE}).
+     *
+     * @return the box, with right and up at least 1
+     */
+    public ShipBox holdingConsole() {
+        return right >= 1 && up >= 1 ? this : new ShipBox(front, back, left, Math.max(right, 1), Math.max(up, 1), down);
     }
 
     /**

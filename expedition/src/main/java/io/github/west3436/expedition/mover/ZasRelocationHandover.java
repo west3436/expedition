@@ -2,18 +2,22 @@ package io.github.west3436.expedition.mover;
 
 import io.github.west3436.expedition.api.ExpeditionApi;
 import io.github.west3436.zas.api.mutation.SourceId;
+import io.github.west3436.zas.api.mutation.ZonePins;
 import io.github.west3436.zas.api.relocation.Destination;
 import io.github.west3436.zas.api.relocation.RelocationOutcome;
 import io.github.west3436.zas.api.relocation.RelocationResult;
 import io.github.west3436.zas.api.relocation.RelocationTicket;
 import io.github.west3436.zas.api.relocation.Relocations;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * The hand-over to ZAS³'s relocation (API-065, ZAS³ 1.2.0's {@link Relocations}), which carries the
@@ -25,6 +29,14 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * Ticket#complete} is {@link Relocations#complete} with {@link Destination#offset}, and {@link
  * Ticket#cancel} is {@link Relocations#cancel}. ZAS³ applies a begin at its next atmos tick, so a
  * move waits up to about a second before its first block moves.
+ *
+ * <p><b>Cabin air.</b> ZAS³ carries zones only, and dissolves a sealed room whose air matches the
+ * open air after a minute, so a cabin of plain Overworld air may have no zone when its ship takes
+ * off. So before it begins, the hand-over pins every enclosed region of the box ({@link CabinAir}),
+ * which forms the missing zones, and waits for the pins to be applied. {@link #INSTANCE} pins under
+ * an owner of the move's own and takes the pins off once the move is over. {@link #keeping} pins
+ * under an owner it is given and leaves the pins on: a ship's cabin keeps its zone wherever it
+ * lands, until the owner unpins it.
  *
  * <p><b>Refusal codes.</b> A begin ZAS³ refuses refuses the move whole, with nothing changed. The
  * code is {@code atmos_} and the outcome's name in lower case, each one in {@link MoveRefusal} with a
@@ -58,16 +70,32 @@ public final class ZasRelocationHandover implements RelocationHandover {
     /** Who moves the blocks, as ZAS³'s {@code ZoneRelocatedEvent} and {@code BlocksMovedEvent} name it. */
     public static final SourceId MOVER = SourceId.of(ExpeditionApi.MOD_ID, "ship_mover");
 
-    /** The hand-over. It keeps nothing between moves. */
-    public static final ZasRelocationHandover INSTANCE = new ZasRelocationHandover();
+    /** The hand-over. It keeps nothing between moves: each move's pins come off when it is over. */
+    public static final ZasRelocationHandover INSTANCE = new ZasRelocationHandover(null);
 
     /** The prefix of every refusal code this hand-over gives. */
     public static final String REFUSAL_PREFIX = "atmos_";
 
-    private ZasRelocationHandover() {}
+    /** Who keeps the cabin's pins after a move, or null for each move's own, taken off after. */
+    private final @Nullable SourceId keeper;
+
+    private ZasRelocationHandover(@Nullable SourceId keeper) {
+        this.keeper = keeper;
+    }
 
     /**
-     * Begins ZAS³'s relocation of the zones in {@code box}.
+     * The hand-over that pins the box's enclosed air under {@code owner} and leaves it pinned, as a
+     * ship does with its cabin.
+     *
+     * @param owner who holds the pins
+     * @return the hand-over
+     */
+    public static ZasRelocationHandover keeping(SourceId owner) {
+        return new ZasRelocationHandover(Objects.requireNonNull(owner, "owner"));
+    }
+
+    /**
+     * Pins the enclosed air in {@code box}, then begins ZAS³'s relocation of the zones in it.
      *
      * @param from the level the blocks leave
      * @param box the blocks that will move
@@ -75,7 +103,8 @@ public final class ZasRelocationHandover implements RelocationHandover {
      */
     @Override
     public ZasTicket begin(ServerLevel from, BoundingBox box) {
-        return new ZasTicket(Relocations.begin(from, box, MOVER));
+        SourceId owner = keeper != null ? keeper : SourceId.of(ExpeditionApi.MOD_ID, "move/" + UUID.randomUUID());
+        return new ZasTicket(from, box, owner, keeper == null, CabinAir.pin(from, box, owner));
     }
 
     /**
@@ -114,22 +143,46 @@ public final class ZasRelocationHandover implements RelocationHandover {
 
     /** One of ZAS³'s relocation tickets, seen as the mover's. */
     public static final class ZasTicket implements Ticket {
-        private final RelocationTicket ticket;
+        private final ServerLevel from;
+        private final SourceId owner;
+        private final boolean unpin;
         private final CompletableFuture<Optional<String>> begun;
         private final CompletableFuture<RelocationResult> ended = new CompletableFuture<>();
+        private @Nullable RelocationTicket ticket;
+        private @Nullable ServerLevel to;
+        private boolean cancelled;
 
-        private ZasTicket(RelocationTicket ticket) {
-            this.ticket = ticket;
-            this.begun = ticket.begun().thenApply(result -> refusal(result.outcome()));
+        private ZasTicket(
+                ServerLevel from, BoundingBox box, SourceId owner, boolean unpin, CompletableFuture<Void> pinned) {
+            this.from = from;
+            this.owner = owner;
+            this.unpin = unpin;
+            this.begun = pinned.thenCompose(done -> {
+                if (cancelled) {
+                    return CompletableFuture.completedFuture(Optional.of(MoveRefusal.ATMOS_ENDED));
+                }
+                RelocationTicket t = Relocations.begin(from, box, MOVER);
+                ticket = t;
+                return t.begun().thenApply(result -> refusal(result.outcome()));
+            });
         }
 
         /**
-         * ZAS³'s ticket.
+         * ZAS³'s ticket, once the pins are on and the relocation has begun.
          *
-         * @return the ticket
+         * @return the ticket, or null before then
          */
-        public RelocationTicket ticket() {
+        public @Nullable RelocationTicket ticket() {
             return ticket;
+        }
+
+        /**
+         * Who holds this move's pins.
+         *
+         * @return the owner
+         */
+        public SourceId owner() {
+            return owner;
         }
 
         @Override
@@ -151,6 +204,8 @@ public final class ZasRelocationHandover implements RelocationHandover {
 
         @Override
         public void complete(ServerLevel to, Vec3i offset) {
+            this.to = to;
+            RelocationTicket ticket = Objects.requireNonNull(this.ticket, "completed before it began");
             Relocations.complete(ticket, Destination.offset(to, offset)).whenComplete((result, error) -> {
                 if (error == null && result.outcome() == RelocationOutcome.UNLOADED) {
                     // The mover holds both ends loaded, so this shouldn't happen. The blocks have
@@ -169,10 +224,21 @@ public final class ZasRelocationHandover implements RelocationHandover {
 
         @Override
         public void cancel() {
-            Relocations.cancel(ticket).whenComplete(this::finish);
+            cancelled = true;
+            if (ticket == null) {
+                finish(RelocationResult.of(RelocationOutcome.CANCELLED), null);
+            } else {
+                Relocations.cancel(ticket).whenComplete(this::finish);
+            }
         }
 
-        private void finish(RelocationResult result, Throwable error) {
+        private void finish(RelocationResult result, @Nullable Throwable error) {
+            if (unpin) {
+                ZonePins.unpin(from, owner);
+                if (to != null && to != from) {
+                    ZonePins.unpin(to, owner);
+                }
+            }
             if (error != null) {
                 ended.completeExceptionally(error);
             } else {
@@ -182,7 +248,7 @@ public final class ZasRelocationHandover implements RelocationHandover {
 
         @Override
         public String toString() {
-            return "ZasTicket[" + ticket + "]";
+            return "ZasTicket[" + (ticket == null ? owner : ticket) + "]";
         }
     }
 }

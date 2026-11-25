@@ -20,6 +20,14 @@
       ],
       "conditions": [
         {
+          "condition": "minecraft:block_state_property",
+          "block": "expedition:shuttle_computer",
+          "properties": {
+            "half": "lower",
+            "side": "left"
+          }
+        },
+        {
           "condition": "minecraft:survives_explosion"
         }
       ]

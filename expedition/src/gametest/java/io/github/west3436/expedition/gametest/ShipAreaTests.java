@@ -4,7 +4,6 @@ import io.github.west3436.expedition.ExpeditionMod;
 import io.github.west3436.expedition.mover.MoveJob;
 import io.github.west3436.expedition.mover.MoveRequest;
 import io.github.west3436.expedition.mover.ShipMover;
-import io.github.west3436.expedition.registry.ExpeditionBlocks;
 import io.github.west3436.expedition.ship.ShipAreas;
 import io.github.west3436.expedition.ship.ShipBox;
 import io.github.west3436.expedition.ship.ShipComputers;
@@ -29,7 +28,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -162,16 +160,7 @@ public final class ShipAreaTests {
 
     /** Places a computer facing north, at a position relative to the test. */
     private static ShuttleComputerBlockEntity place(GameTestHelper h, BlockPos rel) {
-        h.setBlock(
-                rel,
-                ExpeditionBlocks.SHUTTLE_COMPUTER
-                        .get()
-                        .defaultBlockState()
-                        .setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
-        if (!(h.getBlockEntity(rel) instanceof ShuttleComputerBlockEntity computer)) {
-            throw new GameTestAssertException("no computer's block entity at " + rel);
-        }
-        return computer;
+        return TestComputers.place(h, rel, Direction.NORTH);
     }
 
     private static void check(boolean condition, String message) {

@@ -44,7 +44,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DirectionalBlock;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
@@ -229,6 +228,91 @@ public final class FlightTests {
                 .thenSucceed();
     }
 
+    /**
+     * The 0.1.0 hand test's cabin: sealed, but holding only the Overworld's own air, so ZAS³ gives
+     * it no zone (it dissolves a sealed room that matches the open air, CORE-052). It used to arrive
+     * on the Moon as vacuum, and read "open air" at home again. Now the flight pins the cabin under
+     * the ship's owner as it leaves: it arrives on the Moon as a zone of the air it left with, and
+     * home again it stays a zone past the minute ZAS³ would otherwise dissolve it after.
+     */
+    @GameTest(template = "empty", batch = GATE, timeoutTicks = TIMEOUT)
+    public static void a_cabin_of_plain_air_keeps_it_there_and_back(GameTestHelper h) {
+        ServerLevel overworld = h.getLevel();
+        ServerLevel moon = level(h, MOON_LEVEL);
+        BlockPos a = area(5);
+        // A pad of its own, away from the gate test's.
+        BlockPos pad = new BlockPos(350, 120, 350);
+        BoundingBox padColumns = new BoundingBox(350, 0, 350, 362, 0, 362);
+        Run run = new Run();
+        double[] outside = new double[1];
+        h.startSequence()
+                .thenWaitUntil(() -> {
+                    hold(h, overworld, box(a));
+                    hold(h, moon, padColumns);
+                })
+                .thenExecute(() -> {
+                    force(moon, padColumns, true);
+                    for (BlockPos p : BlockPos.betweenClosed(pad, pad.offset(12, 0, 12))) {
+                        moon.setBlock(p, Blocks.STONE.defaultBlockState(), Block.UPDATE_CLIENTS);
+                    }
+                    wipe(moon, new BoundingBox(350, 121, 350, 362, 130, 362));
+                    build(overworld, a);
+                })
+                // No gas is added: the cabin is the open air's, with no zone, as ZAS³ leaves it.
+                .thenWaitUntil(() -> h.assertTrue(
+                        Atmospheres.zoneAt(overworld, Vec3.atCenterOf(middle(a)))
+                                .isEmpty(),
+                        "the cabin of plain air is still a zone"))
+                .thenExecute(() -> {
+                    outside[0] = Atmospheres.at(overworld, middle(a)).pressure();
+                    h.assertTrue(outside[0] > 90, "the Overworld's air is " + outside[0] + " kPa");
+                    ShuttleComputerBlockEntity computer = computer(h, overworld, a);
+                    run.flight =
+                            Flights.launch(overworld, computer, FlightOrder.land(MOON, 356, 356), pilot(overworld));
+                    h.assertFalse(run.flight.result().isDone(), "the launch was refused: " + run.flight.result());
+                })
+                .thenWaitUntil(() -> landed(h, run.flight))
+                .thenWaitUntil(() -> settled(h, moon, run.flight))
+                .thenExecute(() -> {
+                    BlockPos b = run.flight.result().join().origin().orElseThrow();
+                    plainAir(h, zone(h, moon, b), outside[0], "on the Moon");
+                    run.moonCorner = b;
+                    TestGasTanks.clear(a.offset(TANK));
+                    TestGasTanks.fill(b.offset(TANK), Map.of(H2, 100.0, O2, 60.0));
+                    int x = a.getX() + SIDE / 2;
+                    int z = a.getZ() + SIDE / 2;
+                    run.flight = Flights.launch(
+                            moon, computer(h, moon, b), FlightOrder.land(OVERWORLD, x, z), pilot(overworld));
+                    h.assertFalse(run.flight.result().isDone(), "the launch home was refused: " + run.flight.result());
+                })
+                .thenWaitUntil(() -> landed(h, run.flight))
+                .thenWaitUntil(() -> settled(h, overworld, run.flight))
+                .thenExecute(() -> plainAir(
+                        h,
+                        zone(h, overworld, run.flight.result().join().origin().orElseThrow()),
+                        outside[0],
+                        "home again"))
+                // Longer than ZAS³'s minute: the ship's pin keeps the zone.
+                .thenIdle(70 * 20)
+                .thenExecute(() -> {
+                    BlockPos c = run.flight.result().join().origin().orElseThrow();
+                    plainAir(h, zone(h, overworld, c), outside[0], "a minute after landing home");
+                    TestGasTanks.clear(run.moonCorner.offset(TANK));
+                    TestGasTanks.clear(c.offset(TANK));
+                    wipe(overworld, box(c));
+                    wipe(moon, new BoundingBox(350, 120, 350, 362, 130, 362));
+                    force(moon, padColumns, false);
+                })
+                .thenSucceed();
+    }
+
+    /** The cabin is its 27 cells, at the open air's pressure it left with. */
+    private static void plainAir(GameTestHelper h, ZoneInfo zone, double outside, String where) {
+        h.assertTrue(zone.cellCount() == CELLS, where + ": the cabin has " + zone.cellCount() + " cells");
+        double p = zone.mixture().pressure();
+        h.assertTrue(Math.abs(p - outside) < 1, where + ": the cabin is at " + p + " kPa, not " + outside);
+    }
+
     // ---- The rules ----------------------------------------------------------------------
 
     /**
@@ -382,7 +466,8 @@ public final class FlightTests {
 
     /** The ship's box, with its cabin's lowest corner at {@code corner}. */
     private static BoundingBox box(BlockPos corner) {
-        return BoundingBox.fromCorners(corner, corner.offset(SIDE - 1, SIDE, SIDE - 1));
+        // Up to the top of the computer, a 2 x 2 console on the roof.
+        return BoundingBox.fromCorners(corner, corner.offset(SIDE - 1, SIDE + 1, SIDE - 1));
     }
 
     /** The pilot, who owns every computer the tests build. */
@@ -407,13 +492,7 @@ public final class FlightTests {
                 }
             }
         }
-        level.setBlock(
-                corner.offset(COMPUTER),
-                ExpeditionBlocks.SHUTTLE_COMPUTER
-                        .get()
-                        .defaultBlockState()
-                        .setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH),
-                Block.UPDATE_ALL);
+        TestComputers.place(level, corner.offset(COMPUTER), Direction.NORTH);
         level.setBlock(
                 corner.offset(THRUSTER),
                 ExpeditionBlocks.GAS_THRUSTER

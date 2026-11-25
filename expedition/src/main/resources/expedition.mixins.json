@@ -16,7 +16,8 @@
     "PlayerListMixin",
     "PortalDestinationMixin",
     "ThreadedLevelLightEngineMixin",
-    "WorldBorderAccessor"
+    "WorldBorderAccessor",
+    "WorldDimensionsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

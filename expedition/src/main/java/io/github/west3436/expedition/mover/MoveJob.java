@@ -2,6 +2,7 @@ package io.github.west3436.expedition.mover;
 
 import io.github.west3436.expedition.ship.BlockWeights;
 import io.github.west3436.ss13.tick.TickBudget;
+import io.github.west3436.zas.api.mutation.BlockGeometry;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -381,6 +382,11 @@ public final class MoveJob {
             target.removeBlockEntity(there);
         }
         QuietBlocks.set(to, target, there, state, lights);
+        // ZAS³ sees block changes through LevelChunk.setBlockState, which the quiet writes go
+        // around: tell it of both ends, or it keeps the hull where it took off and never sees it
+        // land.
+        BlockGeometry.markDirty(from, pos);
+        BlockGeometry.markDirty(to, there.immutable());
         if (QuietBlocks.putBlockEntity(to, target, there, state, saved) != null) {
             budget.spend(MoveSettings.BLOCK_ENTITY);
             blockEntities++;

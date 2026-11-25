@@ -27,7 +27,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DirectionalBlock;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -163,12 +162,7 @@ public final class GasThrusterTests {
 
     /** Builds the ship, fills its tank, and sets its box round all three blocks. */
     private static ShuttleComputerBlockEntity ship(GameTestHelper h, Map<ResourceLocation, Double> gas) {
-        h.setBlock(
-                COMPUTER,
-                ExpeditionBlocks.SHUTTLE_COMPUTER
-                        .get()
-                        .defaultBlockState()
-                        .setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
+        TestComputers.place(h, COMPUTER, Direction.NORTH);
         h.setBlock(
                 THRUSTER,
                 ExpeditionBlocks.GAS_THRUSTER
